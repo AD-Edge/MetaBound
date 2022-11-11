@@ -1,4 +1,104 @@
 body {
     width: 100%;
     height: 100%;
+    padding: 0px;
+    margin: auto auto;
+    touch-action: none;
+    overflow: hidden; /*  Disable scrollbars */
+    display: block; /* No floating content on sides */
+    background-color: #222222;
+}
+
+/* !!Main NFT Min/Max Dimensions set here!! */
+#nftBOX {
+    position: absolute;
+    z-index: 8;
+    opacity: 1;
+    min-height: 64px;
+    min-width: 64px;
+    max-height: 720px;
+    max-width: 720px;
+    /* disable canvas to see outline, good for debugging */
+    outline: 4px dashed #333333;
+    outline-offset: -4px;
+}
+  
+#canvasMain {
+    visibility: visible;
+    position: absolute;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: #333333;
+    z-index: 1;
+    outline: 6px solid #222222;
+    outline-offset: -6px;
+    background-color: #8d8d8d;
+    margin: 0 auto;
+}
+
+#containerCanvas {
+    height: 100%;
+    width: 100%;
+    position: absolute; 
+    /* background-color: #445899; */
+}
+
+#innerDIV {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+/* Example of a simple static 
+image/link element which scales */
+#container {
+    position: absolute;
+    pointer-events: all;
+    bottom: 4%;
+    left: 3%;
+    z-index: 12;
+    width: 8%;
+  /*we dont need this getting too big*/
+    max-width: 80px;
+}
+
+#container:hover .overlay {
+    opacity: 0.8;
+}
+
+/* class for static logo */
+.logoimage {
+    display: block;
+    width: 100%;
+    opacity: 0.25;
+    height: auto;
+}
+
+/*link overlay*/
+.overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    width: 100%;
+    opacity: 0;
+    transition: .5s ease;
+    background-color: #1c60ff; /*Loopring Blue*/
+}
+
+/*link text for overlay*/
+.text {
+    color: white;
+    /*Dynamically scale font based on window*/
+    font-size: calc(1vw + 1vh);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    -webkit-transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+    text-align: center;
 }

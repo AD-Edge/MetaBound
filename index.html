@@ -9,11 +9,30 @@ twitter.com/Alex_ADEdge -->
     <head>
         <link rel="stylesheet" href="src/style.css">
         <script src="src/code.js"></script>
+        <script src="src/ui.js"></script>
+        <script src="src/framefunctions.js"></script>
         <title>MetaBound v0.1</title>
     </head>
     <body>
+        <!-- nftBOX is the primary div & the one which scales dynamically -->
+        <!-- Set dimension min/max in CSS -->
+        <div id="containerCanvas">
+            <div id="innerDIV">
+                <div id="nftBOX">
+                    <!--game here-->
+                    <canvas width="100%" height="100%" id="canvasMain"></canvas>
+                    <!-- Delta Logo - Shameless plug to my twitter !!  -->
+                    <div id="container">
+                        <img class="logoimage" src="src/iconDelta.png" alt="deltaLink"> 
+                        <a href="https://twitter.com/Alex_ADEdge" target="_blank" rel="noopener noreferrer">
+                            <div class="overlay">
+                                <div class="text">Link</div>
+                            </div>
+                        </a>
+                    </div>
 
-    <!--game here-->
-
+                </div>
+            </div>
+        </div>
     </body>
 </html>
