@@ -15,6 +15,17 @@ const app = () => {
     //Get Delta/link example element
     deltaContainer = document.getElementById("container");
     
+    //init three.js 
+    this._threejs = new THREE.WebGLRenderer({
+        antialias:true,
+    });
+    // this._threejs.shadowMap.enabled = true;
+    // this._threejs.shadowMap.type = Three.PCFSoftShadowMap;
+    // this._threejs.setPixelRatio(window.devicePixelRatio);
+    // this._threejs.setSize(window.innerWidth, window.innerHeight);
+
+    // document.body.appendChild(this._threejs.domElement);
+
     //Retrieve and save values needed
     minCanvas = parseInt(style.getPropertyValue('min-height'));
     maxCanvas = parseInt(style.getPropertyValue('max-height'));
@@ -42,13 +53,24 @@ const app = () => {
     });
 };
 
+//threejs camera 
+// const fov = 60;
+// const aspect = 1920 / 1080;
+// const near = 1.0;
+// const far = 1000.0;
+// this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+// this._camera.position.set(75, 20, 0);
+
+//state stuff
 var init = false;
+
 const STATE_ENUM = {
     MENU: "menu",
     START: "start",
     COMPLETE: "complete",
     DEATH: "death",
 };
+
 var state = STATE_ENUM.MENU;
 
 //primary render loop

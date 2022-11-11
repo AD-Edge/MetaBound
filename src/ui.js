@@ -13,7 +13,10 @@ function drawTitleText() {
     ctx.fillStyle = '#303030';
     ctx.textAlign = "center";
     ctx.font = height/22 + 'px retroPixel';
-    ctx.fillText("*METABOUND*", 0.5*width, 0.08*height);
+    ctx.fillText("METABOUND", 0.5*width, 0.08*height);
+    ctx.font = height/12 + 'px retroPixel';
+    ctx.fillText("_", 0.72*width, 0.07*height);
+    ctx.fillText("_", 0.72*width, 0.067*height);
     ctx.font = height/42 + 'px retroPixel';
     ctx.fillText("# MAKEYOURMETA", 0.5*width, 0.92*height);
     ctx.fillText("By Alex Delderfield, 2022", 0.5*width, 0.95*height);
