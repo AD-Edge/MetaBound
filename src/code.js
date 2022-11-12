@@ -1,3 +1,5 @@
+//const { ThreadMember } = require("discord.js");
+
 const app = () => {
     //app startup and configure
     console.log("Game Start: MetaBound");
@@ -15,16 +17,12 @@ const app = () => {
     //Get Delta/link example element
     deltaContainer = document.getElementById("container");
     
-    //init three.js 
-    this._threejs = new THREE.WebGLRenderer({
-        antialias:true,
-    });
-    // this._threejs.shadowMap.enabled = true;
-    // this._threejs.shadowMap.type = Three.PCFSoftShadowMap;
-    // this._threejs.setPixelRatio(window.devicePixelRatio);
-    // this._threejs.setSize(window.innerWidth, window.innerHeight);
-
-    // document.body.appendChild(this._threejs.domElement);
+    //threejs
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
+    //add render element (canvas)
+    renderer.id = "test";
+    document.body.appendChild(renderer.domElement);
 
     //Retrieve and save values needed
     minCanvas = parseInt(style.getPropertyValue('min-height'));
@@ -53,16 +51,20 @@ const app = () => {
     });
 };
 
-//threejs camera 
-// const fov = 60;
-// const aspect = 1920 / 1080;
-// const near = 1.0;
-// const far = 1000.0;
-// this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-// this._camera.position.set(75, 20, 0);
+//setup init three.js
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+
+const geometry = new THREE.BoxGeometry(1,1,1);
+const material = new THREE.MeshBasicMaterial( {color: 0x00ff00});
+const cube = new THREE.Mesh(geometry, material);
+
+scene.add( cube );
+camera.position.z = 5;
 
 //state stuff
-var init = false;
+var init = true;
 
 const STATE_ENUM = {
     MENU: "menu",
@@ -81,9 +83,9 @@ function renderLoop() {
     
     //update game state
     if(init) {
-        gameStateSwitch(state);
+        init = false;
+        gameState(state);
     }
-
 
     //Draw title text
     drawTitleText();
@@ -96,9 +98,11 @@ function gameState(s) {
     switch(s) {
         case STATE_ENUM.MENU:
             console.log("menu init");
+            //init menu call
             break;
         case STATE_ENUM.START:
             console.log("game start");
+            //start game call
             break;
         case STATE_ENUM.COMPLETE:
             console.log("top level reached");
