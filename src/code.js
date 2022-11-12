@@ -1,78 +1,42 @@
-// const Ammo = require("../lib/ammo");
-//const { ThreadMember } = require("discord.js");
-const app = () => {
-    //app startup and configure
-    console.log("Game Start: MetaBound");
-    console.log("Using the LRC-NFT-Dyanmic Frame Template"); 
-    console.log("https://github.com/AD-Edge/LRC-NFT-DynamicFrame");
-    console.log("https://twitter.com/Alex_ADEdge");
+import * as THREE from '../lib/three.module.js';
 
-    //Setup Canvas and Elements
-    html = document.documentElement;
-    body = document.body;
-    canvas = document.getElementById('canvasMain');
-    ctx = canvas.getContext("2d");
-    nftBOX = document.getElementById('nftBOX');
-    style = window.getComputedStyle(nftBOX);
-    //Get Delta/link example element
-    deltaContainer = document.getElementById("container");
-    
-    //threejs & ammo
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
-    //add render element (canvas)
-    document.body.appendChild(renderer.domElement);
-    renderer.domElement.id = "canvasThree";
+import {GLTFLoader} from '../lib/GLTFLoader.js';
+import {OrbitControls} from '../lib/OrbitControls.js';
+// import {Ammo} from '../lib/ammo.js';
 
-    //Retrieve and save values needed
-    minCanvas = parseInt(style.getPropertyValue('min-height'));
-    maxCanvas = parseInt(style.getPropertyValue('max-height'));
-    //console.log("Minimum Canvas: " + minCanvas);
-    //console.log("Maximum Canvas: " + maxCanvas);
+//Setup Canvas and Elements
+var html = document.documentElement;
+var body = document.body;
+var nftBOX = document.getElementById('nftBOX');
+var style = window.getComputedStyle(nftBOX);
+//Get Delta/link example element
+var deltaContainer = document.getElementById("container");
 
-    //touch and mouse events
-    canvas.addEventListener("pointerdown", dragStart, false);
-    canvas.addEventListener("pointerup", dragEnd, false);
-    canvas.addEventListener('pointermove', pointerTouchMove, false);
+var canvas = document.getElementById('canvasMain');
+var ctx = canvas.getContext("2d");
+//Make a memory only canvas for redraw 
+var tempCanvas = document.createElement('canvas');
+var tempCtx = tempCanvas.getContext('2d');
+var minCanvas;
+var maxCanvas;
 
-    //Call resize functions on setup so canvas is happy from the start
-    resizeToDiv();
+//Setup main variables
+var width = 0;
+var height = 0;
+var aspectRatio = 0;
 
-    //Preload custom font and kick off main processes
-    var f = new FontFace('retroPixel', 'url(./src/EarlyGameBoy.ttf)');
-    f.load().then(function(font) {
-        //Ready to use the font in a canvas context
-        //console.log('*Custom Font Loaded Successfully*');
-        //Add font on the html page
-        document.fonts.add(font);
+//Images/icons
+//Load images for fullscreen toggle button
+var imgFullScreenOpen = new Image();
+var imgFullScreenClose = new Image();
+imgFullScreenOpen.src = 'src/fullscreenOpen.png';
+imgFullScreenClose.src = 'src/fullscreenClose.png';
+var fullScreenToggle = false;
+var fullScreenOver = false;
+var pad, xLoc, yLoc, xScale;
 
-        //Kick off main panel setup
-        initAndStartGame();
-    });
+var f;//Preload custom font and kick off main processes
 
-    Ammo().then(function(Ammo) {
-        console.log("Ammo physics loaded");
-
-
-        //initPhysics();
-    });
-};
-
-const glftLoader = new GLTFLoader();
-// glftLoader.load('url(./src/3dAssets/MetaBoy_3173_test1.glb)');
-glftLoader.load('https://dl.dropboxusercontent.com/s/g72f0iyi80zuk3n/MetaBoy_3173_test1.glb');
-
-//setup init three.js
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
-
-//test geometry
-const geometry = new THREE.BoxGeometry(1,1,1);
-const material = new THREE.MeshBasicMaterial( {color: 0x00ff00});
-const cube = new THREE.Mesh(geometry, material);
-scene.add( cube );
-camera.position.z = 5;
 
 //state stuff
 var init = true;
@@ -86,68 +50,413 @@ const STATE_ENUM = {
 
 var state = STATE_ENUM.MENU;
 
-//Three.js animate canvas/renderer
-function animate() {
-    requestAnimationFrame( animate );
-    renderer.render( scene, camera );
-}
-animate(); 
+//Store mouse position
+const mouse = { x: 0, y: 0 };
 
-//primary render loop
-function renderLoop() {    
-    //Refresh canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 1;
+class LoadPrimaryApplication {
+    constructor() {
+        this.Initialize();
+    }
+
+    Initialize() {
+        //app startup and configure
+        console.log("App Start: MetaBound");
+        console.log("Using the LRC-NFT-Dyanmic Frame Template"); 
+        console.log("https://github.com/AD-Edge/LRC-NFT-DynamicFrame");
+        console.log("https://twitter.com/Alex_ADEdge");
+
+        //Retrieve and save values needed
+        minCanvas = parseInt(style.getPropertyValue('min-height'));
+        maxCanvas = parseInt(style.getPropertyValue('max-height'));
+        //console.log("Minimum Canvas: " + minCanvas);
+        //console.log("Maximum Canvas: " + maxCanvas);
+
+        //setup init three.js
+        this.renderer = new THREE.WebGLRenderer();
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        //threejs & ammo
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
+        //add render element (canvas)
+        document.body.appendChild(this.renderer.domElement);
+        this.renderer.domElement.id = "canvasThree";
+
+        //resize here?? 
+        window.addEventListener('resize', () => {    
+            if(fullScreenToggle) {
+                this.fullScreenEnable();
+            } else {
+                this.resizeToDiv();
+            }
+            //this._OnWindowResize();
+        }, false);
+
+        //touch and mouse events
+        canvas.addEventListener("pointerdown", this.dragStart, false);
+        canvas.addEventListener("pointerup", this.dragEnd, false);
+        canvas.addEventListener('pointermove', this.pointerTouchMove, false);
+
+        //Call resize functions on setup so canvas is happy from the start
+        this.resizeToDiv();
+
+        //test geometry
+        this.cube = new THREE.Mesh(
+            new THREE.BoxGeometry(1,1,1), 
+            new THREE.MeshBasicMaterial({
+                color: 0x00ff00
+            }));
+        this.scene.add( this.cube );
+        this.camera.position.z = 5;
+
+
+        this._previousRAF = null;
+        this._mixers = [];
+
+        this.f = new FontFace('retroPixel', 'url(./src/EarlyGameBoy.ttf)');
+        this.f.load().then(function(font) {
+            //Ready to use the font in a canvas context
+            console.log('*Custom Font Loaded Successfully*');
+            //Add font on the html page
+            document.fonts.add(font);
+
+        });
+        
+        // Ammo().then(function(Ammo) {
+        //     console.log("Ammo physics loaded");
+
+        //     var collisionConfiguration_ = new Ammo.btDefaultCollisionConfiguration();
+        //     //console.log(collisionConfiguration_);
+        //     //initPhysics();
+            
+        //     //Kick off main panel setup
+        //     // initAndStartGame();
+        // });
+
+        this.renderInterval;
+
+        this.initModelLoad();
+
+        //this.LoadModel();
+        // this.LoadAnimatedModel();
+        this.RenderAnimationFrame();
+
+    }
+
+    LoadAnimatedModel() {
+        // console.log("loadanimated model");
+    }
+
+    async initModelLoad() {
+        const { mb1, } = await this.loadMetaModels();
+        
+        scene.add(mb1);
+    }
+
+    async  loadMetaModels() {
+        const loader = new GLTFLoader();
+        
+        const [metaboyData, /*flamingoData, storkData*/] = await Promise.all([
+            loader.loadAsync("./src/3dAssets/MetaBoy_3173_test1.glb"),
+            // loader.loadAsync("/assets/models/Flamingo.glb"),
+            // loader.loadAsync("/assets/models/Stork.glb"),
+        ]);
+
+        
+        const metaBoy1 = setupModel(metaboyData);
+
+        return metaBoy1;
+    }
+
+    LoadModel() {
+
+        // const loader = new GLTFLoader();
+        // loader.load('./src/3dAssets/MetaBoy_3173_test1.glb', (gltf) => {
+        // //     gltf.scene.traverse(c => {
+        // //         c.castShadow = true;
+        // //   });
+        //     this.OnLoaded(gltf);
+        //     // this.scene.add(gltf.scene); 
+        // });
+
+        // const loadedData = await loader.loadAsync('path/to/yourModel.glb');
+    }
+
+    OnLoaded(obj) {
+        this.target = obj;
+        this.scene.add(this.target); 
+    }
+
+    RenderAnimationFrame() {
+        //Game states
+        //if(state == STATE_ENUM.MENU) {
+            //console.log("menu state");
+        this.cube.rotation.x += 0.01;
+        this.cube.rotation.y += 0.01;
+        this.cube.position.y = -0.5;
+
+             
+        // this.metaboy.position.y = -1;
+        //}
+
+        //Refresh canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+
+        //update game state
+        if(init) {
+            init = false;
+            this.gameState(state);
+        }
+
+        //Draw title text
+        this.drawTitleText();
+        //Draw the button which toggles fullscreen mode
+        this.drawFullScreenButton();
+        this.debugMousePos();
+
+        requestAnimationFrame((t) => {
+            if (this._previousRAF === null) {
+                this._previousRAF = t;
+                console.log("kicking off first animation frame");
+            }
+      
+            this.RenderAnimationFrame();
+      
+            this.renderer.render(this.scene, this.camera);
+            this.Step(t - this._previousRAF);
+            this._previousRAF = t;
+          });
+    }
+
+    Step(timeElapsed) {
+        const timeElapsedS = timeElapsed * 0.001;
+        if (this._mixers) {
+            this._mixers.map(m => m.update(timeElapsedS));
+        }
     
-    //update game state
-    if(init) {
-        init = false;
-        gameState(state);
+        // if (this._controls) {
+        //   this._controls.Update(timeElapsedS);
+        // }
+    }
+    
+    debugMousePos() {
+        //debug mouse/touch pos - final draw call so it draws on top
+        ctx.globalAlpha = 0.5; //reset global alpha
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(240, 140, 140, 1)';
+        //console.log("mouse: " + mouse.x + ", " + mouse.y);
+        ctx.arc(mouse.x, mouse.y, height*0.02, 0, 2*Math.PI);
+        ctx.fill();
+    }
+    
+    gameState(s) {
+        switch(s) {
+            case STATE_ENUM.MENU:
+                console.log("menu init");
+                //init menu call
+                break;
+            case STATE_ENUM.START:
+                console.log("game start");
+                //start game call
+                break;
+            case STATE_ENUM.COMPLETE:
+                console.log("top level reached");
+                break;
+            case STATE_ENUM.DEATH:
+                console.log("Game Over \n Your max score: xxx \n Your height at death: xxx");
+                break;
+    
+        }
     }
 
-    //Game states
-    if(state == STATE_ENUM.MENU) {
-        //console.log("menu state");
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
+    //Primary resize function for canvas
+    //Keeps all dimensions being used relative to nftBOX constraints and limits
+    resizeToDiv() {
+        //This is needed to preserve image during scaling
+        //Resizing the canvas (ie canvas.width = xxx) clears the canvas
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        //Save the canvas on the temp/memory-only canvas
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        //Resize nftBOX based on smallest dimension (height vs width)
+        //This is our overall 'containment box'
+        if(fullScreenToggle) { //Fullscreen MODE
+            //Unset constraints on nftBOX
+            nftBOX.style.maxWidth = '100%';
+            nftBOX.style.maxHeight = '100%';
+            nftBOX.style.minWidth = '100%';
+            nftBOX.style.minHeight = '100%';
+
+            //Set to max available dimension
+            nftBOX.style.width = (html.clientWidth) + 'px';
+            nftBOX.style.height = (html.clientHeight) + 'px';
+        } else { //If NOT-Fullscreen MODE
+            if (html.clientHeight < html.clientWidth) {
+                nftBOX.style.width = (html.clientHeight) + 'px';
+                nftBOX.style.height = (html.clientHeight) + 'px';
+            } else  {
+                nftBOX.style.width = (html.clientWidth) + 'px';
+                nftBOX.style.height = (html.clientWidth) + 'px';
+            }
+        }
+
+        //Reset canvas dimensions
+        canvas.width = nftBOX.clientWidth;
+        canvas.style.width = nftBOX.clientWidth;
+        canvas.height = nftBOX.clientHeight;
+        canvas.style.height = nftBOX.clientHeight;
+
+        //Reset variables
+        width = nftBOX.clientWidth;
+        height = nftBOX.clientHeight;
+        aspectRatio = width/height;
+        //console.log('*width: ' + width + ' height: ' + height);
+        
+        //Draw saved canvas back right away
+        ctx.drawImage(tempCanvas, 0, 0);
     }
 
-    //Draw title text
-    drawTitleText();
-    //Draw the button which toggles fullscreen mode
-    drawFullScreenButton();
-    debugMousePos();
-}
+    //Click down/Drag starts
+    dragStart(e) { 
+        //the user cant do anything else but drag
+        e.preventDefault(); 
+        //update the mouse location relative to canvas area
+        var rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
 
-function gameState(s) {
-    switch(s) {
-        case STATE_ENUM.MENU:
-            console.log("menu init");
-            //init menu call
-            break;
-        case STATE_ENUM.START:
-            console.log("game start");
-            //start game call
-            break;
-        case STATE_ENUM.COMPLETE:
-            console.log("top level reached");
-            break;
-        case STATE_ENUM.DEATH:
-            console.log("Game Over \n Your max score: xxx \n Your height at death: xxx");
-            break;
-
+        //debug mouse/touch CLICK pos
+        ctx.globalAlpha = 1.0; //reset global alpha
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(140, 140, 240, 1)';
+        //console.log("mouse: " + mouse.x + ", " + mouse.y);
+        ctx.arc(mouse.x, mouse.y, height*0.06, 0, 2*Math.PI);
+        ctx.fill();
+        
+        //Mouse click if hovering over Fullscreen element
+        if(fullScreenOver) {
+            //toggle to fullscreen
+            if(!fullScreenToggle) {
+                fullScreenToggle = true;
+                this.fullScreenEnable();
+            } else {
+                fullScreenToggle = false;
+                this.fullScreenDisable();
+            }
+        }
     }
+
+    //When the drag ends - ie touch or mouse ends
+    //All activation events while releasing on a hover, ie a 'PRESS' event 
+    dragEnd() {
+    }
+    //Handle the pointer moving
+    pointerTouchMove(e) {
+        //the user cant do anything else but drag
+        e.preventDefault(); 
+        //update the mouse location relative to canvas area
+        var rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    }
+
+    //Fullscreen functions
+    fullScreenEnable() {
+        //resize elements
+        this.resizeToDiv();
+    }
+    fullScreenDisable() {
+        //reset constraints 
+        nftBOX.style.maxWidth = maxCanvas + 'px';
+        nftBOX.style.maxHeight = maxCanvas + 'px';
+        nftBOX.style.minWidth = minCanvas + 'px';
+        nftBOX.style.minHeight = minCanvas + 'px';
+        //resize elements
+        this.resizeToDiv();
+    }
+
+    drawTitleText() {
+        //Draw Title text
+        ctx.fillStyle = '#303030';
+        ctx.textAlign = "center";
+        ctx.font = height/22 + 'px retroPixel';
+        ctx.fillText("METABOUND", 0.5*width, 0.08*height);
+        ctx.font = height/12 + 'px retroPixel';
+        ctx.fillText("           _", 0.5*width, 0.068*height);
+        ctx.fillText("           _", 0.5*width, 0.065*height);
+        ctx.font = height/42 + 'px retroPixel';
+        ctx.fillText("# MAKEYOURMETA", 0.5*width, 0.92*height);
+        ctx.fillText("By Alex Delderfield, 2022", 0.5*width, 0.95*height);
+
+        ctx.font = height/36 + 'px retroPixel';
+
+        //Draw custom red text for min/max sizes
+        // ctx.fillStyle = '#303030';
+        // if(fullScreenToggle) {
+        //     ctx.fillStyle = '#FF4444';
+        //     ctx.fillText('FULLSCREEN', 0.5*width, 0.95*height);
+        // } else {
+        //     if((width <= minCanvas) || (width >=maxCanvas)) {
+        //         ctx.fillStyle = '#FF4444';
+        //         ctx.fillText(width, 0.56*width, 0.95*height);
+        //     } else {
+        //         ctx.fillStyle = '#303030';
+        //         ctx.fillText(width, 0.56*width, 0.95*height);
+        //     }
+        //     //Display current canvas size
+        //     ctx.fillStyle = '#303030';
+        //     ctx.fillText("SIZE: ", 0.46*width, 0.95*height);
+            
+        // }
+    }
+
+    //Draw and Calculate select area Fullscreen button
+    drawFullScreenButton() {
+        pad = (width*0.125);
+        //clamp padding amount to reasonable levels
+        pad = Math.min(Math.max(pad, 25), 70);
+        xLoc = width-pad;
+        yLoc = height-pad;
+        xScale = 0.10*(width*0.75);
+        //clamp button from going outside of the range 16 -> 54
+        xScale = Math.min(Math.max(xScale, 16), 54);
+
+        //draw and check fullscreen button
+        this.checkIfOverFullScreen();
+        if(fullScreenOver) {
+            ctx.fillStyle = 'rgba(100, 100, 240, 0.25)';
+            ctx.rect(xLoc, yLoc, xScale, xScale);
+            ctx.fillStyle = ctx.isPointInPath(mouse.x, mouse.y) ? 'rgba(100, 140, 240, 0.5)' : 'rgba(100, 140, 240, 0)';
+            ctx.fill();
+        }
+
+        //draw fullscreen button in various states
+        if(fullScreenToggle) {
+            ctx.drawImage(imgFullScreenClose, xLoc, yLoc, xScale, xScale);
+        } else {
+            ctx.drawImage(imgFullScreenOpen, xLoc, yLoc, xScale, xScale);
+        }
+    }
+
+    checkIfOverFullScreen() {
+        ctx.beginPath();
+        ctx.rect(xLoc, yLoc, xScale, xScale);
+        ctx.fillStyle = 'rgba(100, 100, 240, 0.25)';
+        //determine if mouse is over select area
+        ctx.isPointInPath(mouse.x, mouse.y) ? fullScreenOver=true : fullScreenOver=false;
+        ctx.fill();
+    }
+
 }
 
-//Start overall processeses
-function initAndStartGame() {
-    //clear render interval if running
-    clearInterval(renderInterval);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+let APP = null;
 
-    //set off render process
-    renderInterval = setInterval(renderLoop, 20);
-}
+window.addEventListener('DOMContentLoaded', () => {
+    APP = new LoadPrimaryApplication();
+});
 
 //Kick off app function when initial HTML document loaded
-document.addEventListener("DOMContentLoaded", app);
+//document.addEventListener("DOMContentLoaded", app);
