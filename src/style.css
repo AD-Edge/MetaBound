@@ -24,15 +24,26 @@ body {
 }
   
 #canvasMain {
-    visibility: visible;
+    visibility: hidden;
     position: absolute;
     padding: 0;
     box-sizing: border-box;
-    background-color: #333333;
     z-index: 1;
     outline: 6px solid #222222;
     outline-offset: -6px;
     background-color: #8d8d8d;
+    margin: 0 auto;
+}
+  
+#canvasThree {
+    visibility: visible;
+    position: absolute;
+    padding: 0;
+    box-sizing: border-box;
+    z-index: 10;
+    outline: 6px solid #552222;
+    outline-offset: -6px;
+    /* background-color: #b85858; */
     margin: 0 auto;
 }
 

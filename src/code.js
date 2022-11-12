@@ -21,8 +21,8 @@ const app = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
     //add render element (canvas)
-    renderer.id = "test";
     document.body.appendChild(renderer.domElement);
+    renderer.domElement.id = "canvasThree";
 
     //Retrieve and save values needed
     minCanvas = parseInt(style.getPropertyValue('min-height'));
@@ -75,6 +75,13 @@ const STATE_ENUM = {
 
 var state = STATE_ENUM.MENU;
 
+//Three.js animate canvas/renderer
+function animate() {
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+}
+animate(); 
+
 //primary render loop
 function renderLoop() {    
     //Refresh canvas
@@ -85,6 +92,13 @@ function renderLoop() {
     if(init) {
         init = false;
         gameState(state);
+    }
+
+    //Game states
+    if(state == STATE_ENUM.MENU) {
+        //console.log("menu state");
+        cube.rotation.x += 0.01;
+        cube.rotation.y += 0.01;
     }
 
     //Draw title text
