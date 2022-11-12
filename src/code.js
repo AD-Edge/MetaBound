@@ -1,5 +1,5 @@
+// const Ammo = require("../lib/ammo");
 //const { ThreadMember } = require("discord.js");
-
 const app = () => {
     //app startup and configure
     console.log("Game Start: MetaBound");
@@ -17,7 +17,7 @@ const app = () => {
     //Get Delta/link example element
     deltaContainer = document.getElementById("container");
     
-    //threejs
+    //threejs & ammo
     renderer.setSize(window.innerWidth, window.innerHeight);
     //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
     //add render element (canvas)
@@ -49,17 +49,28 @@ const app = () => {
         //Kick off main panel setup
         initAndStartGame();
     });
+
+    Ammo().then(function(Ammo) {
+        console.log("Ammo physics loaded");
+
+
+        //initPhysics();
+    });
 };
+
+const glftLoader = new GLTFLoader();
+// glftLoader.load('url(./src/3dAssets/MetaBoy_3173_test1.glb)');
+glftLoader.load('https://dl.dropboxusercontent.com/s/g72f0iyi80zuk3n/MetaBoy_3173_test1.glb');
 
 //setup init three.js
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 
+//test geometry
 const geometry = new THREE.BoxGeometry(1,1,1);
 const material = new THREE.MeshBasicMaterial( {color: 0x00ff00});
 const cube = new THREE.Mesh(geometry, material);
-
 scene.add( cube );
 camera.position.z = 5;
 
