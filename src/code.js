@@ -2,7 +2,6 @@ import * as THREE from '../lib/three.module.js';
 
 import {GLTFLoader} from '../lib/GLTFLoader.js';
 import {OrbitControls} from '../lib/OrbitControls.js';
-// import Ammo, {ammo} from '../lib/ammo.js';
 
 //Setup Canvas and Elements
 var html = document.documentElement;
@@ -53,6 +52,34 @@ var state = STATE_ENUM.MENU;
 //Store mouse position
 const mouse = { x: 0, y: 0 };
 
+class RigidBody {
+    constructor() {
+
+    }
+
+    createBox(mass, pos, quat, size) {
+        this.transform = new Ammo.btTransform();
+        this.transform.setIdentity();
+        this.transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+        this.transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
+        this.motionState = new Ammo.btDefaultMotionState(this.transform);
+
+        const btSize = new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5);
+        this.shape = new Ammo.btBoxShape(btSize);
+        this.shape.setMargin(.05);
+
+        this.inertia = new Ammo.btVector3(0,0,0);
+        if(mass > 0) {
+            this.shape.calculateLocalInertia(mass, this.inertia);
+        }
+
+        this.info = new Ammo.btRigidBodyConstructionInfo(mass, this.motionState, this.shape, this.inertia);
+        this.body = new Ammo.btRigidBody(this.info);
+
+        Ammo.destroy(btSize);
+    }
+}
+
 class LoadPrimaryApplication {
     constructor() {
         this.Initialize();
@@ -71,9 +98,26 @@ class LoadPrimaryApplication {
         //console.log("Minimum Canvas: " + minCanvas);
         //console.log("Maximum Canvas: " + maxCanvas);
 
+        //ammo physics config 
+        this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+        this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
+        this.broadphase = new Ammo.btDbvtBroadphase();
+        this.solver = new Ammo.btSequentialImpulseConstraintSolver();
+        this.physicsWorld = new Ammo.btDiscreteDynamicsWorld(
+        this.dispatcher, this.broadphase, this.solver, this.collisionConfiguration);
+        this.physicsWorld.setGravity(new Ammo.btVector3(0, -9.81, 0));
+
+        this.rigidBodies = [];
+
         //setup init three.js
         this.renderer = new THREE.WebGLRenderer({antialias: true,});
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+
+        
         this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.Fog( 0x222222, 1, 25 );
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -82,12 +126,24 @@ class LoadPrimaryApplication {
         this.directionaLight= undefined;
         // ambient light setup
         this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-        this.ambientLight.castShadow = true;
         this.scene.add(this.ambientLight);
         // directional light
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.2);
-        // this.directionalLight.castShadow = true;
-        this.directionalLight.position.set(0, 32, 64);
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        this.directionalLight.castShadow = true;
+        this.directionalLight.position.set(-80, 150, 64);
+        // this.directionalLight.target.position.set(100, 0, 0);
+        this.directionalLight.shadow.bias = -0.001;
+        this.directionalLight.shadow.mapSize.width = 2048;
+        this.directionalLight.shadow.mapSize.height = 2048;
+        this.directionalLight.shadow.camera.near = 0.1;
+        this.directionalLight.shadow.camera.far = 500.0;
+        this.directionalLight.shadow.camera.near = 0.5;
+        this.directionalLight.shadow.camera.far = 500.0;
+        this.directionalLight.shadow.camera.left = 100;
+        this.directionalLight.shadow.camera.right = -100;
+        this.directionalLight.shadow.camera.top = 100;
+        this.directionalLight.shadow.camera.bottom = -100;
+        
         this.scene.add(this.directionalLight);
 
         //threejs & ammo
@@ -125,6 +181,52 @@ class LoadPrimaryApplication {
         this.camera.position.z = 5;
 
 
+        
+        const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(100, 1, 100),
+            new THREE.MeshStandardMaterial({color: 0x404040}));
+        ground.castShadow = false;
+        ground.receiveShadow = true;
+        ground.position.set(0,-2.5,0);
+        this.scene.add(ground);
+
+        const rb_ground = new RigidBody();
+        rb_ground.createBox(0, ground.position, ground.quaternion, new THREE.Vector3(100, 1, 100));
+        this.physicsWorld.addRigidBody(rb_ground.body);
+
+
+        const box = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({color: 0x909090}));
+        box.castShadow = true;
+        box.receiveShadow = true;
+        box.position.set(3,-0.5, -0.5);
+        this.scene.add(box);
+        
+        const rb_box = new RigidBody();
+        rb_box.createBox(2, box.position, box.quaternion, new THREE.Vector3(1, 1, 1), null);
+        rb_box.body.setRestitution(0.125);
+        rb_box.body.setFriction(1);
+        rb_box.body.setRollingFriction(5);
+        
+        this.physicsWorld.addRigidBody(rb_box.body);
+
+        this.rigidBodies.push({mesh: box, rigidBody: rb_box});
+
+        //this.rigidBodies.push({mesh: box, rigidBody: rb});
+
+        // const scale = Math.random() * 4 + 4;
+        // const box = new THREE.Mesh(
+        //   new THREE.BoxGeometry(scale*0.1, scale*0.1, scale*0.1),
+        //   new THREE.MeshStandardMaterial({
+        //       color: 0x808080,
+        //   }));
+        // box.position.set(Math.random() * 2 - 1, 0.0, Math.random() * 2 - 1);
+        // box.quaternion.set(0, 0, 0, 1);
+        // box.castShadow = true;
+        // box.receiveShadow = true;
+
+        this.tmpTransform = new Ammo.btTransform();
         this._previousRAF = null;
         this._mixers = [];
 
@@ -157,31 +259,42 @@ class LoadPrimaryApplication {
 
         const glftLoader = new GLTFLoader();
         glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
             this.metaBoyModel = gltfScene;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
             // gltfScene.scene.rotation.y = 45;
             gltfScene.scene.position.y = -2;
             gltfScene.scene.position.x = +1.5;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
+            //gltfScene.scene.quaternion.set(0.2, 0, 0, 1);
             this.scene.add(gltfScene.scene);
 
+            // child.material.shading = THREE.SmoothShading;
         });
         glftLoader.load("./src/3dAssets/MetaScreen_test1.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
             this.metaScreenModel = gltfScene;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
-            // gltfScene.scene.rotation.y = 45;
             gltfScene.scene.position.y = -1.5;
             gltfScene.scene.position.x = -1;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
             this.scene.add(gltfScene.scene);
-
         });
+
         //this.LoadModel("./src/3dAssets/MetaBoy_3173_test1.glb");
         // this.LoadAnimatedModel();
         //console.log("kicking off application");
         this.RenderAnimationFrame();
-
-
     }
 
     // loader.loadAsync("./src/3dAssets/MetaBoy_3173_test1.glb"),
@@ -208,7 +321,6 @@ class LoadPrimaryApplication {
             // this.scene.add(gltf.scene); 
             //this.OnLoaded(gltf);
         });
-
         // const loadedData = await loader.loadAsync('path/to/yourModel.glb');
     }
 
@@ -240,7 +352,6 @@ class LoadPrimaryApplication {
             this.cube.rotation.x += 0.01;
             this.cube.rotation.y += 0.01;
             this.cube.position.y = -0.5;
-
         }
 
         //handle metaboy model
@@ -277,15 +388,29 @@ class LoadPrimaryApplication {
             this.controls.update();
             this.Step(t - this._previousRAF);
             this._previousRAF = t;
-          });
+        });
     }
 
     Step(timeElapsed) {
         const timeElapsedS = timeElapsed * 0.001;
+        
         if (this._mixers) {
             this._mixers.map(m => m.update(timeElapsedS));
         }
-    
+        //step physics
+        this.physicsWorld.stepSimulation(timeElapsed, 10)
+        //iterate over all objects and rigid bodies, link locations/etc 
+        for (let i = 0; i < this.rigidBodies.length; ++i) {
+            this.rigidBodies[i].rigidBody.motionState.getWorldTransform(this.tmpTransform);
+            const pos = this.tmpTransform.getOrigin();
+            const quat = this.tmpTransform.getRotation();
+            const pos3 = new THREE.Vector3(pos.x(), pos.y(), pos.z()); 
+            const quat3 = new THREE.Quaternion(quat.x(), quat.y(), quat.z(), quat.w());
+            
+            this.rigidBodies[i].mesh.position.copy(pos3);
+            this.rigidBodies[i].mesh.quaternion.copy(quat3);
+        }
+
         // if (this._controls) {
         //   this._controls.Update(timeElapsedS);
         // }
@@ -504,11 +629,16 @@ class LoadPrimaryApplication {
 
 let APP = null;
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     Ammo().then((lib) => {
-        Ammo = lib;
-        APP = new LoadPrimaryApplication();
-    } )
+        try {
+            Ammo = lib;
+            APP = new LoadPrimaryApplication();
+            // LoadPrimaryApplication.initialize();
+        } catch (error) {
+            console.log("ASYNC ERROR THROWN: " + error);
+        }
+    });
 });
 
 //Kick off app function when initial HTML document loaded
