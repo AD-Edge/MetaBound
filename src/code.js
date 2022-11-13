@@ -2,7 +2,7 @@ import * as THREE from '../lib/three.module.js';
 
 import {GLTFLoader} from '../lib/GLTFLoader.js';
 import {OrbitControls} from '../lib/OrbitControls.js';
-// import {Ammo} from '../lib/ammo.js';
+// import Ammo, {ammo} from '../lib/ammo.js';
 
 //Setup Canvas and Elements
 var html = document.documentElement;
@@ -75,6 +75,8 @@ class LoadPrimaryApplication {
         this.renderer = new THREE.WebGLRenderer({antialias: true,});
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
         this.ambientLight = undefined;
         this.directionaLight= undefined;
@@ -151,14 +153,25 @@ class LoadPrimaryApplication {
         // const loader = new GLTFLoader();
         // const metaBoy = this.MainModelLoader("./src/3dAssets/MetaBoy_3173_test1.glb");
 
-        let metaBoyModel;
+        let metaBoyModel, metaScreenModel;
 
         const glftLoader = new GLTFLoader();
         glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
             this.metaBoyModel = gltfScene;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
             // gltfScene.scene.rotation.y = 45;
-            gltfScene.scene.position.y = -1;
+            gltfScene.scene.position.y = -2;
+            gltfScene.scene.position.x = +1.5;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+
+        });
+        glftLoader.load("./src/3dAssets/MetaScreen_test1.glb", (gltfScene) => {
+            this.metaScreenModel = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            // gltfScene.scene.rotation.y = 45;
+            gltfScene.scene.position.y = -1.5;
+            gltfScene.scene.position.x = -1;
             gltfScene.scene.scale.set(0.5,0.5,0.5);
             this.scene.add(gltfScene.scene);
 
@@ -261,6 +274,7 @@ class LoadPrimaryApplication {
             this.RenderAnimationFrame();
       
             this.renderer.render(this.scene, this.camera);
+            this.controls.update();
             this.Step(t - this._previousRAF);
             this._previousRAF = t;
           });
@@ -491,7 +505,10 @@ class LoadPrimaryApplication {
 let APP = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-    APP = new LoadPrimaryApplication();
+    Ammo().then((lib) => {
+        Ammo = lib;
+        APP = new LoadPrimaryApplication();
+    } )
 });
 
 //Kick off app function when initial HTML document loaded

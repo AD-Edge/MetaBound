@@ -1,4 +1,0 @@
-
-
-
-//Touch and Mouse Functions
