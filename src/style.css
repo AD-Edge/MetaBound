@@ -28,10 +28,10 @@ body {
     position: absolute;
     padding: 0;
     box-sizing: border-box;
-    z-index: 1;
+    z-index: 12;
     outline: 6px solid #222222;
     outline-offset: -6px;
-    background-color: #8d8d8d;
+    /* background-color: #8d8d8d; */
     margin: 0 auto;
 }
   
@@ -40,7 +40,7 @@ body {
     position: absolute;
     padding: 0;
     box-sizing: border-box;
-    z-index: 10;
+    z-index: 10; /*4*/
     outline: 6px solid #552222;
     outline-offset: -6px;
     /* background-color: #b85858; */
@@ -50,6 +50,10 @@ body {
 #containerCanvas {
     height: 100%;
     width: 100%;
+    
+    touch-action: none; /*disabled nft box touch*/
+    pointer-events:none;
+
     position: absolute; 
     /* background-color: #445899; */
 }
