@@ -72,9 +72,21 @@ class LoadPrimaryApplication {
         //console.log("Maximum Canvas: " + maxCanvas);
 
         //setup init three.js
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({antialias: true,});
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        this.ambientLight = undefined;
+        this.directionaLight= undefined;
+        // ambient light setup
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.ambientLight.castShadow = true;
+        this.scene.add(this.ambientLight);
+        // directional light
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.2);
+        // this.directionalLight.castShadow = true;
+        this.directionalLight.position.set(0, 32, 64);
+        this.scene.add(this.directionalLight);
 
         //threejs & ammo
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -101,13 +113,13 @@ class LoadPrimaryApplication {
         //Call resize functions on setup so canvas is happy from the start
         this.resizeToDiv();
 
-        //test geometry
-        this.cube = new THREE.Mesh(
-            new THREE.BoxGeometry(1,1,1), 
-            new THREE.MeshBasicMaterial({
-                color: 0x00ff00
-            }));
-        this.scene.add( this.cube );
+        // //test geometry
+        // this.cube = new THREE.Mesh(
+        //     new THREE.BoxGeometry(1,1,1), 
+        //     new THREE.MeshBasicMaterial({
+        //         color: 0x00ff00
+        //     }));
+        // this.scene.add( this.cube );
         this.camera.position.z = 5;
 
 
@@ -136,69 +148,93 @@ class LoadPrimaryApplication {
 
         this.renderInterval;
 
-        this.initModelLoad();
+        // const loader = new GLTFLoader();
+        // const metaBoy = this.MainModelLoader("./src/3dAssets/MetaBoy_3173_test1.glb");
 
-        //this.LoadModel();
+        let metaBoyModel;
+
+        const glftLoader = new GLTFLoader();
+        glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
+            this.metaBoyModel = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            // gltfScene.scene.rotation.y = 45;
+            gltfScene.scene.position.y = -1;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+
+        });
+        //this.LoadModel("./src/3dAssets/MetaBoy_3173_test1.glb");
         // this.LoadAnimatedModel();
+        //console.log("kicking off application");
         this.RenderAnimationFrame();
+
 
     }
 
+    // loader.loadAsync("./src/3dAssets/MetaBoy_3173_test1.glb"),
+    // loader.loadAsync("./src/3dAssets/MetaScreen_test1.glb"),
+            
     LoadAnimatedModel() {
         // console.log("loadanimated model");
     }
 
-    async initModelLoad() {
-        const { mb1, } = await this.loadMetaModels();
-        
-        scene.add(mb1);
-    }
-
-    async  loadMetaModels() {
-        const loader = new GLTFLoader();
-        
-        const [metaboyData, /*flamingoData, storkData*/] = await Promise.all([
-            loader.loadAsync("./src/3dAssets/MetaBoy_3173_test1.glb"),
-            // loader.loadAsync("/assets/models/Flamingo.glb"),
-            // loader.loadAsync("/assets/models/Stork.glb"),
-        ]);
-
-        
-        const metaBoy1 = setupModel(metaboyData);
-
-        return metaBoy1;
-    }
-
-    LoadModel() {
-
-        // const loader = new GLTFLoader();
-        // loader.load('./src/3dAssets/MetaBoy_3173_test1.glb', (gltf) => {
-        // //     gltf.scene.traverse(c => {
-        // //         c.castShadow = true;
-        // //   });
-        //     this.OnLoaded(gltf);
-        //     // this.scene.add(gltf.scene); 
+    LoadModel(url) {
+        // return new Promise((resolve, reject) => {
+        //     this.loader.load(url, data=> resolve(data), null, reject);
         // });
+
+        const loader = new GLTFLoader();
+        loader.load(url, function (data) {
+            var object = data.scene;
+
+            this.loadToScene(object);
+        // loader.load(url, (gltf) => {
+            // gltf.scene.traverse(c => {
+            //     c.castShadow = true;
+            // });
+            // this.scene.add(gltf.scene); 
+            //this.OnLoaded(gltf);
+        });
 
         // const loadedData = await loader.loadAsync('path/to/yourModel.glb');
     }
 
-    OnLoaded(obj) {
-        this.target = obj;
-        this.scene.add(this.target); 
+    loadToScene(obj) {
+        console.log("model: " + obj);
+        model.position.set(0,0,0);
+        this.scene.add(obj);
+
     }
+
+    // async MainModelLoader(url) {
+    //     const gltfData = await this.ModelLoader(url),
+
+    //     model = gltf.scene;
+    //     this.scene.add(model);
+
+    // }
+
+    // OnLoaded(obj) {
+    //     this.target = obj;
+    //     this.scene.add(this.target); 
+    // }
 
     RenderAnimationFrame() {
         //Game states
         //if(state == STATE_ENUM.MENU) {
             //console.log("menu state");
-        this.cube.rotation.x += 0.01;
-        this.cube.rotation.y += 0.01;
-        this.cube.position.y = -0.5;
+        if(this.cube) {
+            this.cube.rotation.x += 0.01;
+            this.cube.rotation.y += 0.01;
+            this.cube.position.y = -0.5;
 
-             
-        // this.metaboy.position.y = -1;
-        //}
+        }
+
+        //handle metaboy model
+        if(this.metaBoyModel) {
+            // console.log("loaded metaboy");
+            this.metaBoyModel.scene.rotation.y += 0.01;
+        }
 
         //Refresh canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
