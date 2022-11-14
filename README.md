@@ -3,13 +3,13 @@
 
 <table style="padding:10px">
   <tr>
-    <td> <img src="./doc/screenshot_02.png"
-     alt="screenshot"
-     style="float: left; margin: 8px; width: 615px; height: 364px;" />
-    </td>
-    <td> <img src="./doc/thumbnail_0_0_2op.gif"
+    <td> <img src="thumbnail_0_0_2op.gif"
      alt="screenshot gif"
      style="float: left; margin: 8px; width: 364px; height: 364px;" />
+    </td>
+    <td> <img src="screenshot_02.png"
+     alt="screenshot"
+     style="float: left; margin: 8px; width: 615px; height: 364px;" />
     </td>
   </tr>
 </table>
