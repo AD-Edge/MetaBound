@@ -14,6 +14,24 @@ body {
     position: absolute;
     z-index: 8;
     opacity: 1;
+    
+    touch-action: none; /*disabled nft box touch*/
+    pointer-events:none;
+    min-height: 64px;
+    min-width: 64px;
+    max-height: 720px;
+    max-width: 720px;
+    /* disable canvas to see outline, good for debugging */
+    outline: 0px dashed #333333;
+    outline-offset: -4px;
+}
+/*   
+#nftBOX2 {
+    position: absolute;
+    z-index: 6;
+    opacity: 1;
+    left: 9%;
+    top: 0%;
     min-height: 64px;
     min-width: 64px;
     max-height: 720px;
@@ -21,12 +39,13 @@ body {
     /* disable canvas to see outline, good for debugging */
     outline: 4px dashed #333333;
     outline-offset: -4px;
-}
+} */
   
 #canvasMain {
-    visibility: hidden;
+    visibility: visible;
     position: absolute;
     padding: 0;
+    
     box-sizing: border-box;
     z-index: 12;
     outline: 6px solid #222222;
@@ -40,7 +59,7 @@ body {
     position: absolute;
     padding: 0;
     box-sizing: border-box;
-    z-index: 10; /*4*/
+    z-index: 4; /*4*/
     outline: 6px solid #552222;
     outline-offset: -6px;
     /* background-color: #b85858; */
@@ -51,8 +70,6 @@ body {
     height: 100%;
     width: 100%;
     
-    touch-action: none; /*disabled nft box touch*/
-    pointer-events:none;
 
     position: absolute; 
     /* background-color: #445899; */

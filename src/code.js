@@ -1,20 +1,30 @@
 import * as THREE from '../lib/three.module.js';
 import * as CANNON from '../lib/cannon-es.js'
 import {GLTFLoader} from '../lib/GLTFLoader.js';
+import {OBJLoader} from '../lib/ObjLoader.js';
+import {ConvexGeometry} from '../lib/ConvexGeometry.js'
 import {OrbitControls} from '../lib/OrbitControls.js';
+import CannonUtils from '../lib/utils/CannonUtils.js';
 import CannonDebugger from '../lib/cannon-es-debugger.js';
 
 //Setup Canvas and Elements
 var html = document.documentElement;
 var body = document.body;
 var nftBOX = document.getElementById('nftBOX');
+var innerDIV = document.getElementById('innerDIV');
 var style = window.getComputedStyle(nftBOX);
 //Get Delta/link example element
 var deltaContainer = document.getElementById("container");
 
 var canvas = document.getElementById('canvasMain');
 var ctx = canvas.getContext("2d");
+var canvas2;
+var ctx2;
 //Make a memory only canvas for redraw 
+
+var tempCanvas2 = document.createElement('canvas');
+var tempCtx2 = tempCanvas2.getContext('2d');
+
 var tempCanvas = document.createElement('canvas');
 var tempCtx = tempCanvas.getContext('2d');
 var minCanvas;
@@ -34,6 +44,8 @@ imgFullScreenClose.src = 'src/fullscreenClose.png';
 var fullScreenToggle = false;
 var fullScreenOver = false;
 var pad, xLoc, yLoc, xScale;
+
+var limbs = 0;
 
 var f;//Preload custom font and kick off main processes
 
@@ -98,7 +110,7 @@ class LoadPrimaryApplication {
         
         this.scene = new THREE.Scene();
         this.scene.fog = new THREE.Fog( 0x222222, 1, 25 );
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(75, nftBOX.clientWidth / nftBOX.clientWidth, 0.1, 1000);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
@@ -127,11 +139,14 @@ class LoadPrimaryApplication {
         this.scene.add(this.directionalLight);
 
         //threejs & ammo
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setSize(nftBOX.clientWidth, nftBOX.clientWidth); //nftBOX.clientWidth
         //renderer.setSize(window.innerWidth/2, window.innerHeight/2); //half res test
         //add render element (canvas)
-        document.body.appendChild(this.renderer.domElement);
+        innerDIV.appendChild(this.renderer.domElement);
         this.renderer.domElement.id = "canvasThree";
+
+        canvas2 = document.getElementById('canvasThree');
+        ctx2 = canvas2.getContext("2d");
 
         //resize here?? 
         window.addEventListener('resize', () => {    
@@ -160,13 +175,34 @@ class LoadPrimaryApplication {
         // this.physicsWorld.addRigidBody(rb_ground.body);
 
         //Player default obj and rigid body
-        const box = new THREE.Mesh(
+        // const box = new THREE.Mesh(
+        //     new THREE.BoxGeometry(1, 1, 1),
+        //     new THREE.MeshStandardMaterial({color: 0x909090}));
+        // box.castShadow = true;
+        // box.receiveShadow = true;
+        // box.position.set(0, 0.5, -0.5);
+        // this.scene.add(box);
+        const slipperyMaterial = new CANNON.Material('slippery')
+        slipperyMaterial.friction = 0.1;
+        
+        this.box = undefined; 
+        this.box = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshStandardMaterial({color: 0x909090}));
-        box.castShadow = true;
-        box.receiveShadow = true;
-        box.position.set(0, 0.5, -0.5);
-        this.scene.add(box);
+        this.box.castShadow = true;
+        this.box.receiveShadow = false;
+        this.box.position.set(0, 0.5, -0.5);
+        this.scene.add(this.box);
+        
+        //box physics body
+        this.boxBody1 = undefined; 
+        this.boxBody1 = new CANNON.Body({
+          mass: 5, // kg
+          shape: new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)),
+          material: slipperyMaterial,
+        })
+        this.boxBody1.position.set(0, 1, -1); // m
+        world.addBody(this.boxBody1);
         
         // const rb_box = new RigidBody();
         // rb_box.createBox(1, box.position, box.quaternion, new THREE.Vector3(1, 1, 1), null);
@@ -192,7 +228,7 @@ class LoadPrimaryApplication {
           mass: 5, // kg
           shape: new CANNON.Sphere(radius),
         })
-        this.sphereBody.position.set(-2, 2, 0) // m
+        this.sphereBody.position.set(-3, 2, 0) // m
         world.addBody(this.sphereBody)
 
         this.box2 = undefined; 
@@ -209,10 +245,13 @@ class LoadPrimaryApplication {
           mass: 5, // kg
           shape: new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)),
         })
-        this.boxBody.position.set(2.5, 1, -0.5) // m
+        this.boxBody.position.set(2.5, 3, -0.5) // m
         world.addBody(this.boxBody);
 
         // Static ground plane
+        const groundMaterial = new CANNON.Material('ground')
+        groundMaterial.friction = 0.3
+
         const ground = new THREE.Mesh(
             new THREE.BoxGeometry(100, 1, 100),
             new THREE.MeshStandardMaterial({color: 0x404040}));
@@ -221,10 +260,10 @@ class LoadPrimaryApplication {
         ground.position.set(0,-3.5,0);
         this.scene.add(ground);
         
-        const groundShape = new CANNON.Plane()
-        const groundBody = new CANNON.Body({ mass: 0 })
+        const groundShape = new CANNON.Box(new CANNON.Vec3(50,50,0.5));
+        const groundBody = new CANNON.Body({ mass: 0, material: groundMaterial })
         groundBody.addShape(groundShape)
-        groundBody.position.set(0,-3,0);
+        groundBody.position.set(0,-3.5,0);
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0)
         world.addBody(groundBody)
         // demo.addVisual(groundBody)
@@ -248,8 +287,6 @@ class LoadPrimaryApplication {
         this.metaBoyModel = undefined; 
         this.metaScreenModel = undefined;
         
-        this.levelSeg_01_1 = undefined;
-
         const glftLoader = new GLTFLoader();
         glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
             gltfScene.scene.traverse(function (child) {
@@ -267,7 +304,7 @@ class LoadPrimaryApplication {
             //gltfScene.scene.quaternion.set(0.2, 0, 0, 1);
             this.scene.add(gltfScene.scene);
 
-            box.visible = false;
+            this.box.visible = false;
             // child.material.shading = THREE.SmoothShading;
         });
 
@@ -293,10 +330,193 @@ class LoadPrimaryApplication {
         }
         this.character_controls = new BasicCharacterController(params);
 
+        //level import test 
+        // this.levelSeg_01_1 = undefined;
         // this.levelSeg_01_1 = this.LoadModel("./src/3dAssets/levelsegments/level_seg01_test01.glb");
+        this.Meta_idle = undefined;
+        this.Meta_01 = undefined;
+        this.Meta_02 = undefined;
+        this.Meta_03 = undefined;
+        this.Meta_04 = undefined;
+        this.Meta_05 = undefined;
+        this.Meta_06 = undefined;
+        // this.Meta_idle = this.LoadModel("./src/3dAssets/Meta_idle.glb");
+        
+        glftLoader.load("./src/3dAssets/Meta_idle.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_idle = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -2;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+
+        //Last minute hack import - for limbs!
+        glftLoader.load("./src/3dAssets/Meta_limbs01.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_01 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+        glftLoader.load("./src/3dAssets/Meta_limbs02.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_02 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+        glftLoader.load("./src/3dAssets/Meta_limbs03.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_03 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+        glftLoader.load("./src/3dAssets/Meta_limbs04.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_04 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+        glftLoader.load("./src/3dAssets/Meta_limbs05.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_05 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+        glftLoader.load("./src/3dAssets/Meta_limbs06.glb", (gltfScene) => {
+            gltfScene.scene.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.Meta_06 = gltfScene;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            gltfScene.scene.position.y = -12;
+            gltfScene.scene.scale.set(0.5,0.5,0.5);
+            this.scene.add(gltfScene.scene);
+        });
+
+
+        // level_seg01_test01.obj
+        // this.levelSeg_01_1_OBJ = undefined;
+        // this.levelSeg_01_1_OBJ = this.LoadObjModel("./src/3dAssets/levelsegments/level_seg01_test01.obj");
+        this.levelSeg_01_1 = undefined;
+        this.levelSeg_01_1 = this.LoadObjModel("./src/3dAssets/levelsegments/level_seg01_1.obj");
+        this.levelSeg_01_2 = undefined;
+        this.levelSeg_01_2 = this.LoadObjModel("./src/3dAssets/levelsegments/level_seg01_2.obj");
+        this.levelSeg_01_3 = undefined;
+        this.levelSeg_01_3 = this.LoadObjModel("./src/3dAssets/levelsegments/level_seg01_3.obj");
+        this.levelSeg_01_4 = undefined;
+        this.levelSeg_01_4 = this.LoadObjModel("./src/3dAssets/levelsegments/level_seg01_4.obj");
+
+
 
         //console.log("kicking off application");
         this.RenderAnimationFrame();
+    }
+
+    LoadObjModel(url) {
+        const objLoader = new OBJLoader();
+        objLoader.load( url, (object) => {
+                //console.log(object.children[0]);
+                let obj = new THREE.Mesh(object.children[0].geometry, new THREE.MeshStandardMaterial({color: 0xC09090}));
+                // obj.material = material
+                obj.position.y = 0.5;
+                obj.position.z = -10;
+                obj.castShadow = true;
+                this.scene.add(obj)
+
+                setTimeout(() => {
+                    this.createConvexHull(obj)
+                }, 2000)
+
+                return object;
+            },
+            (xhr) => {
+                console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+            },
+            (error) => {
+                console.log(error)
+            }
+        );
+    }
+
+    createConvexHull(obj) {
+        const position = obj.geometry.attributes.position.array
+        const points = [];
+        for (let i = 0; i < position.length; i += 3) {            
+            points.push(
+                new THREE.Vector3(position[i], position[i + 1], position[i + 2])
+            )
+        }
+        const convexGeometry = new ConvexGeometry(points)
+        const convexHull = new THREE.Mesh(
+            convexGeometry,
+            new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                wireframe: true,
+            })
+        )
+        obj.add(convexHull)
+
+        setTimeout(() => {
+            //this.convertConvexHullToTrimesh(obj)
+        }, 2000)
+    }
+    
+    convertConvexHullToTrimesh(obj) {
+        const shape = CannonUtils.CreateTrimesh(convexHull.geometry)
+        const body = new CANNON.Body({ mass: 1 })
+        body.allowSleep = true
+        body.addShape(shape)
+        body.position.x = obj.position.x
+        body.position.y = obj.position.y
+        body.position.z = obj.position.z
+        body.quaternion.x = obj.quaternion.x
+        body.quaternion.y = obj.quaternion.y
+        body.quaternion.z = obj.quaternion.z
+        body.quaternion.w = obj.quaternion.w
+        world.addBody(body)
     }
             
     LoadModel(url) {
@@ -323,6 +543,7 @@ class LoadPrimaryApplication {
         if(init) {
             init = false;
             this.gameState(state);
+            
         }
         //Game states
         //if(state == STATE_ENUM.MENU) {
@@ -343,27 +564,103 @@ class LoadPrimaryApplication {
         if(this.metaBoyModel) {
             if(this.character_controls.input.keys.left) {
                 //console.log("left!");
-                // this.metaBoyModel.scene.position.x -= 0.05;                            
                 this.metaBoyModel.scene.rotation.y = -0.1;
-                // let jumpImpulse = new Ammo.btVector3(-0.8, 0, 0);
-                // physicsBody.setActivationState(1);                
-                // physicsBody.setLinearVelocity( jumpImpulse );
+                const force = new CANNON.Vec3( -80, 0, 0 );
+                this.boxBody1.applyForce(force);
+                this.boxBody1.quaternion.z = 0;
+
+                
+                this.Meta_01.scene.scale.x = -0.5;
+                this.Meta_02.scene.scale.x = -0.5;
+                this.Meta_03.scene.scale.x = -0.5;
+                this.Meta_04.scene.scale.x = -0.5;
+                this.Meta_05.scene.scale.x = -0.5;
+                this.Meta_06.scene.scale.x = -0.5;
+
+                if(limbs > 6) {
+                    limbs = 0;
+
+                } else {
+                    this.Meta_idle.scene.position.y = -12;
+                    limbs += 0.1;
+                    if(limbs <1) {
+                        this.Meta_06.scene.position.y = -12;
+                        this.Meta_01.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 2) {
+                        this.Meta_01.scene.position.y = -12;
+                        this.Meta_02.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 3) {
+                        this.Meta_02.scene.position.y = -12;
+                        this.Meta_03.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 4) {
+                        this.Meta_03.scene.position.y = -12;
+                        this.Meta_04.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 5) {
+                        this.Meta_04.scene.position.y = -12;
+                        this.Meta_05.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 6) {
+                        this.Meta_05.scene.position.y = -12;
+                        this.Meta_06.scene.position.y = this.metaBoyModel.scene.position.y;
+
+                    }
+                }
+
             } else if(this.character_controls.input.keys.right) {
                 this.metaBoyModel.scene.rotation.y = + 0.1;
-                // let jumpImpulse = new Ammo.btVector3(0.8, 0, 0);
-                // physicsBody.setActivationState(1);                
-                // physicsBody.setLinearVelocity( jumpImpulse );
+                const force = new CANNON.Vec3( 80, 0, 0 );
+                this.boxBody1.applyForce(force);
+                this.boxBody1.quaternion.z = 0;
+
+                this.Meta_01.scene.scale.x = 0.5;
+                this.Meta_02.scene.scale.x = 0.5;
+                this.Meta_03.scene.scale.x = 0.5;
+                this.Meta_04.scene.scale.x = 0.5;
+                this.Meta_05.scene.scale.x = 0.5;
+                this.Meta_06.scene.scale.x = 0.5;
+
+
+                if(limbs > 6) {
+                    limbs = 0;
+
+                } else {
+                    this.Meta_idle.scene.position.y = -12;
+                    limbs += 0.1;
+                    if(limbs <1) {
+                        this.Meta_06.scene.position.y = -12;
+                        this.Meta_01.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 2) {
+                        this.Meta_01.scene.position.y = -12;
+                        this.Meta_02.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 3) {
+                        this.Meta_02.scene.position.y = -12;
+                        this.Meta_03.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 4) {
+                        this.Meta_03.scene.position.y = -12;
+                        this.Meta_04.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 5) {
+                        this.Meta_04.scene.position.y = -12;
+                        this.Meta_05.scene.position.y = this.metaBoyModel.scene.position.y;
+                    } else if (limbs < 6) {
+                        this.Meta_05.scene.position.y = -12;
+                        this.Meta_06.scene.position.y = this.metaBoyModel.scene.position.y;
+
+                    }
+                }
             } else if(this.character_controls.input.keys.space) {
-                // let jumpImpulse = new Ammo.btVector3(0, 2, 0);
-                // physicsBody.setActivationState(1);                
-                // physicsBody.setLinearVelocity( jumpImpulse );
-
-                //test force
-                const force = new CANNON.Vec3( 0, 100, 0 );
-                this.boxBody.applyForce(force);
-
+                const force = new CANNON.Vec3( 0, 200, 0 );
+                this.boxBody1.applyForce(force);
+                if(this.Meta_idle) {
+                    this.Meta_idle.scene.position.y = this.metaBoyModel.scene.position.y;
+                }
             } else {
-                    this.metaBoyModel.scene.rotation.y = 0;
+                limbs = 0;
+                if(this.Meta_idle) {
+                    this.Meta_idle.scene.position.y = this.metaBoyModel.scene.position.y;
+                }
+                this.metaBoyModel.scene.rotation.y = 0;
+
+                
+                this.ResetMetas();
             }
         }
 
@@ -374,7 +671,7 @@ class LoadPrimaryApplication {
         //Draw title text
         this.drawTitleText();
         //Draw the button which toggles fullscreen mode
-        this.drawFullScreenButton();
+        //this.drawFullScreenButton();
         this.debugMousePos();
 
         //run Cannon physics sim independant from framerate 
@@ -386,6 +683,63 @@ class LoadPrimaryApplication {
         //update test box
         this.box2.position.copy(this.boxBody.position)
         this.box2.quaternion.copy(this.boxBody.quaternion)
+
+        //update player
+        if(this.boxBody1.position.z != 0) {
+            this.boxBody1.position.z = 0; //rough clamp
+        }
+        const pos3 = new THREE.Vector3(this.boxBody1.position.x, this.boxBody1.position.y, this.boxBody1.position.z); 
+        this.box.position.copy(this.boxBody1.position)
+        if(this.metaBoyModel) {
+            this.metaBoyModel.scene.position.x = pos3.x;
+            this.metaBoyModel.scene.position.y = pos3.y - 0.55;
+            this.metaBoyModel.scene.position.z = pos3.z;
+            
+        }
+        
+        if(this.Meta_idle != null && limbs == 0) {
+            //console.log("test");
+            this.Meta_idle.scene.position.x = pos3.x;
+            // this.Meta_idle.scene.position.y = pos3.y - 0.55;
+            this.Meta_idle.scene.position.z = pos3.z;
+        }
+        if(this.Meta_01 != null) {
+            //console.log("test");
+            this.Meta_01.scene.position.x = pos3.x;
+            // this.Meta_01.scene.position.y = pos3.y - 0.55;
+            this.Meta_01.scene.position.z = pos3.z;
+        }
+        if(this.Meta_02 != null) {
+            //console.log("test");
+            this.Meta_02.scene.position.x = pos3.x;
+            // this.Meta_02.scene.position.y = pos3.y - 0.55;
+            this.Meta_02.scene.position.z = pos3.z;
+        }
+        if(this.Meta_03 != null) {
+            //console.log("test");
+            this.Meta_03.scene.position.x = pos3.x;
+            // this.Meta_03.scene.position.y = pos3.y - 0.55;
+            this.Meta_03.scene.position.z = pos3.z;
+        }
+        if(this.Meta_04 != null) {
+            //console.log("test");
+            this.Meta_04.scene.position.x = pos3.x;
+            // this.Meta_04.scene.position.y = pos3.y - 0.55;
+            this.Meta_04.scene.position.z = pos3.z;
+        }
+        if(this.Meta_05 != null) {
+            //console.log("test");
+            this.Meta_05.scene.position.x = pos3.x;
+            // this.Meta_05.scene.position.y = pos3.y - 0.55;
+            this.Meta_05.scene.position.z = pos3.z;
+        }
+        if(this.Meta_06 != null) {
+            //console.log("test");
+            this.Meta_06.scene.position.x = pos3.x;
+            // this.Meta_06.scene.position.y = pos3.y - 0.55;
+            this.Meta_06.scene.position.z = pos3.z;
+        }
+        this.box.quaternion.copy(this.boxBody1.quaternion)
 
         requestAnimationFrame((t) => {
             if (this._previousRAF === null) {
@@ -402,6 +756,27 @@ class LoadPrimaryApplication {
         });
     }
 
+    ResetMetas() {
+        
+        if(this.Meta_01) {
+            this.Meta_01.scene.position.y = -12;
+        }
+        if(this.Meta_02) {
+            this.Meta_02.scene.position.y = -12;
+        }
+        if(this.Meta_03) {
+            this.Meta_03.scene.position.y = -12;
+        }
+        if(this.Meta_04) {
+            this.Meta_04.scene.position.y = -12;
+        }
+        if(this.Meta_05) {
+            this.Meta_05.scene.position.y = -12;
+        }
+        if(this.Meta_06) {
+            this.Meta_06.scene.position.y = -12;
+        }
+    }
     Step(timeElapsed) {
         const timeElapsedS = timeElapsed * 0.001;
         
@@ -470,12 +845,19 @@ class LoadPrimaryApplication {
     //Primary resize function for canvas
     //Keeps all dimensions being used relative to nftBOX constraints and limits
     resizeToDiv() {
+
         //This is needed to preserve image during scaling
         //Resizing the canvas (ie canvas.width = xxx) clears the canvas
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
+        tempCanvas2.width = canvas2.width;
+        tempCanvas2.height = canvas2.height;
         //Save the canvas on the temp/memory-only canvas
         tempCtx.drawImage(canvas, 0, 0);
+        if(canvas2) {
+            tempCtx2.drawImage(canvas2, 0, 0);
+        }
+        
         
         //Resize nftBOX based on smallest dimension (height vs width)
         //This is our overall 'containment box'
@@ -504,6 +886,14 @@ class LoadPrimaryApplication {
         canvas.style.width = nftBOX.clientWidth;
         canvas.height = nftBOX.clientHeight;
         canvas.style.height = nftBOX.clientHeight;
+        canvas2.width = nftBOX.clientWidth;
+        canvas2.style.width = nftBOX.clientWidth;
+        canvas2.height = nftBOX.clientHeight;
+        canvas2.style.height = nftBOX.clientHeight;
+
+
+        this.renderer.setSize(nftBOX.clientWidth, nftBOX.clientWidth);
+
 
         //Reset variables
         width = nftBOX.clientWidth;
@@ -513,6 +903,10 @@ class LoadPrimaryApplication {
         
         //Draw saved canvas back right away
         ctx.drawImage(tempCanvas, 0, 0);
+        if(ctx2) {
+            ctx2.drawImage(tempCanvas2, 0, 0);
+
+        }
     }
 
     //Click down/Drag starts
@@ -545,19 +939,6 @@ class LoadPrimaryApplication {
         }
     }
 
-    //When the drag ends - ie touch or mouse ends
-    //All activation events while releasing on a hover, ie a 'PRESS' event 
-    dragEnd() {
-    }
-    //Handle the pointer moving
-    pointerTouchMove(e) {
-        //the user cant do anything else but drag
-        e.preventDefault(); 
-        //update the mouse location relative to canvas area
-        var rect = canvas.getBoundingClientRect();
-        mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top;
-    }
 
     //Fullscreen functions
     fullScreenEnable() {
@@ -574,9 +955,24 @@ class LoadPrimaryApplication {
         this.resizeToDiv();
     }
 
+
+    //When the drag ends - ie touch or mouse ends
+    //All activation events while releasing on a hover, ie a 'PRESS' event 
+    dragEnd() {
+    }
+    //Handle the pointer moving
+    pointerTouchMove(e) {
+        //the user cant do anything else but drag
+        e.preventDefault(); 
+        //update the mouse location relative to canvas area
+        var rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    }
+
     drawTitleText() {
         //Draw Title text
-        ctx.fillStyle = '#303030';
+        ctx.fillStyle = '#A0A0A0';
         ctx.textAlign = "center";
         ctx.font = height/22 + 'px retroPixel';
         ctx.fillText("METABOUND", 0.5*width, 0.08*height);
@@ -638,12 +1034,15 @@ class LoadPrimaryApplication {
     }
 
     checkIfOverFullScreen() {
-        ctx.beginPath();
-        ctx.rect(xLoc, yLoc, xScale, xScale);
-        ctx.fillStyle = 'rgba(100, 100, 240, 0.25)';
-        //determine if mouse is over select area
-        ctx.isPointInPath(mouse.x, mouse.y) ? fullScreenOver=true : fullScreenOver=false;
-        ctx.fill();
+        if(ctx) {
+            ctx.beginPath();
+            ctx.rect(xLoc, yLoc, xScale, xScale);
+            ctx.fillStyle = 'rgba(100, 100, 240, 0.25)';
+            //determine if mouse is over select area
+            ctx.isPointInPath(mouse.x, mouse.y) ? fullScreenOver=true : fullScreenOver=false;
+            ctx.fill();
+
+        }
     }
 
 }
