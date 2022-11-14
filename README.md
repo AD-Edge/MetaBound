@@ -5,11 +5,11 @@
   <tr>
     <td> <img src="thumbnail_0_0_2op.gif"
      alt="screenshot gif"
-     style="float: left; margin: 8px; width: 364px; height: 364px;" />
+     style="float: left; margin: 4px; width: 364px; height: 364px;" />
     </td>
     <td> <img src="screenshot_02.png"
      alt="screenshot"
-     style="float: left; margin: 8px; width: 615px; height: 364px;" />
+     style="float: left; margin: 4px; width: 448px; height: 364px;" />
     </td>
   </tr>
 </table>
