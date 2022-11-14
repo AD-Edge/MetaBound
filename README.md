@@ -9,11 +9,7 @@
     </td>
     <td> <img src="screenshot_03.png"
      alt="screenshot"
-<<<<<<< HEAD
-     style="float: left; margin: 4px; width: 615px; height: 364px;" />
-=======
      style="float: left; margin: 4px; width: 448px; height: 364px;" />
->>>>>>> e44c94003ca3d48c6557ccd291f1b1829d2b1778
     </td>
   </tr>
 </table>
