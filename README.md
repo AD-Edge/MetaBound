@@ -5,11 +5,11 @@
   <tr>
     <td> <img src="thumbnail_0_0_2op.gif"
      alt="screenshot gif"
-     style="float: left; margin: 8px; width: 364px; height: 364px;" />
+     style="float: left; margin: 4px; width: 364px; height: 364px;" />
     </td>
-    <td> <img src="screenshot_02.png"
+    <td> <img src="screenshot_03.png"
      alt="screenshot"
-     style="float: left; margin: 8px; width: 615px; height: 364px;" />
+     style="float: left; margin: 4px; width: 615px; height: 364px;" />
     </td>
   </tr>
 </table>
@@ -18,7 +18,7 @@
 Entry for the MetaBoy Gamejam, November 2022.
 Using three.js (3D graphics) + cannon-es.js (Physics) and a few other libraries - to create some 3D javascript for the first time.
 
-Mostly unfinished, more of a 3D demo than anything else. Some of the roughest code I've ever drop-kicked together. But learnt a stack!
+Mostly unfinished, theres a lot of features I didnt get around to adding before the gamejam deadline. So its more of a 3D demo than anything else. Some of the roughest code I've ever drop-kicked together. But I learnt a whole lot!
 
 Submission/playable: https://itch.io/jam/metaboy-game-jam/rate/1791623
 
