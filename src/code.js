@@ -114,8 +114,6 @@ class LoadPrimaryApplication {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
-
-        
         this.scene = new THREE.Scene();
         this.scene.fog = new THREE.Fog( 0x222222, 1, 25 );
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -171,15 +169,8 @@ class LoadPrimaryApplication {
         //Call resize functions on setup so canvas is happy from the start
         this.resizeToDiv();
 
-        // //test geometry
-        // this.cube = new THREE.Mesh(
-        //     new THREE.BoxGeometry(1,1,1), 
-        //     new THREE.MeshBasicMaterial({
-        //         color: 0x00ff00
-        //     }));
-        // this.scene.add( this.cube );
-        this.camera.position.z = 5;
 
+        this.camera.position.z = 5;
 
         
         const ground = new THREE.Mesh(
@@ -229,18 +220,6 @@ class LoadPrimaryApplication {
         this.physicsWorld.addRigidBody(rb_box2.body);
         this.rigidBodies.push({mesh: box2, rigidBody: rb_box2});
 
-        //this.rigidBodies.push({mesh: box, rigidBody: rb});
-
-        // const scale = Math.random() * 4 + 4;
-        // const box = new THREE.Mesh(
-        //   new THREE.BoxGeometry(scale*0.1, scale*0.1, scale*0.1),
-        //   new THREE.MeshStandardMaterial({
-        //       color: 0x808080,
-        //   }));
-        // box.position.set(Math.random() * 2 - 1, 0.0, Math.random() * 2 - 1);
-        // box.quaternion.set(0, 0, 0, 1);
-        // box.castShadow = true;
-        // box.receiveShadow = true;
 
         this.tmpTransform = new Ammo.btTransform();
         this._previousRAF = null;
@@ -255,21 +234,7 @@ class LoadPrimaryApplication {
 
         });
         
-        // Ammo().then(function(Ammo) {
-        //     console.log("Ammo physics loaded");
-
-        //     var collisionConfiguration_ = new Ammo.btDefaultCollisionConfiguration();
-        //     //console.log(collisionConfiguration_);
-        //     //initPhysics();
-            
-        //     //Kick off main panel setup
-        //     // initAndStartGame();
-        // });
-
         this.renderInterval;
-
-        // const loader = new GLTFLoader();
-        // const metaBoy = this.MainModelLoader("./src/3dAssets/MetaBoy_3173_test1.glb");
 
         //Load models (really caveman setup here bleh)
         this.metaBoyModel = undefined; 
@@ -298,16 +263,7 @@ class LoadPrimaryApplication {
             // child.material.shading = THREE.SmoothShading;
         });
 
-        //console.log(this.metaBoyModel);
-
-        // const rb_meta = new RigidBody();
-        // rb_meta.createBox(2, metaBoyModel.position, metaBoyModel.quaternion, new THREE.Vector3(1, 1, 1), null);
-        // rb_meta.body.setRestitution(0.125);
-        // rb_meta.body.setFriction(1);
-        // rb_meta.body.setRollingFriction(5);
-        //this.physicsWorld.addRigidBody(rb_meta.body);
-        //this.rigidBodies.push({mesh: this.metaBoyModel, rigidBody: rb_meta});
-
+        
         glftLoader.load("./src/3dAssets/MetaScreen_test1.glb", (gltfScene) => {
             gltfScene.scene.traverse(function (child) {
                 if (child.isMesh) {
@@ -329,20 +285,16 @@ class LoadPrimaryApplication {
         }
         this.character_controls = new BasicCharacterController(params);
 
-        this.levelSeg_01_1 = this.LoadModel("./src/3dAssets/levelsegments/level_seg01_test01.glb");
-        //this.scene.add(this.levelSeg_01_1);
+        // this.levelSeg_01_1 = this.LoadModel("./src/3dAssets/levelsegments/level_seg01_test01.glb");
+        this.CreateGLTFSegment();
 
-        // this.LoadAnimatedModel();
         //console.log("kicking off application");
         this.RenderAnimationFrame();
     }
-
-    // loader.loadAsync("./src/3dAssets/MetaBoy_3173_test1.glb"),
-    // loader.loadAsync("./src/3dAssets/MetaScreen_test1.glb"),
             
-    LoadAnimatedModel() {
-        // console.log("loadanimated model");
-    }
+    // LoadAnimatedModel() {
+    //     // console.log("loadanimated model");
+    // }
 
     LoadModel(url) {
         const glftLoader = new GLTFLoader();
@@ -363,25 +315,98 @@ class LoadPrimaryApplication {
         });
     }
 
-    loadToScene(obj) {
-        console.log("model: " + obj);
-        model.position.set(0,0,0);
-        this.scene.add(obj);
+    CreateGLTFSegment() {
 
+        let position = {x:0, y:0, z:0},
+        quaternion = {x:0, y:0, z:0, w:1},
+        mass = 0.5
+
+        this.loader = new GLTFLoader();
+        // const dracoLoader = new DRACOLoader();
+        // dracoLoader.setDecoderParth('/draco/');
+        // this.loader.setDRACOLoader(dracoLoader);
+        this.loader.load("./src/3dAssets/levelsegments/level_seg01_test01.glb", (gltf) => {
+            const mezh = gltf.scene.children[0];
+            this.scene.add(gltf.scene);
+
+            let transform = new Ammo.btTransform();
+            transform.setIdentity();
+            transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+            transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
+
+            let motionState = new Ammo.btDefaultMotionState(this.transform);
+            let localinertia = new Ammo.btVector3(0,0,0);
+
+            let verticiesPos = mezh.geometry.getAttribute('position').array;
+            let triangles = [];
+            for(let i=0; i < verticiesPos.length; i += 3) {
+                triangles.push({
+                    x: verticesPos[i],
+                    y: verticesPos[i + 2],
+                    z: verticesPos[i + 3]
+                })
+            }
+
+            let triangle, triangle_mesh = new Ammo.btTriangleMesh();
+            let vecA = new Ammo.btVector3(0,0,0);
+            let vecB = new Ammo.btVector3(0,0,0);
+            let vecC = new Ammo.btVector3(0,0,0);
+
+            for(let i=0; i < triangles.length; i+=3) {
+                vecA.setX(triangles[i].x);
+                vecA.setY(triangles[i].y);
+                vecA.setZ(triangles[i].z);
+
+                vecB.setX(triangles[i + 1].x);
+                vecB.setY(triangles[i + 1].y);
+                vecB.setZ(triangles[i + 1].z);
+
+                vecC.setX(triangles[i + 2].x);
+                vecC.setY(triangles[i + 2].y);
+                vecC.setZ(triangles[i + 2].z);
+
+                triangle_mesh.addTriangle(vecA, vecB, vecC, true);
+            }
+
+            Ammo.destroy(vectA);
+            Ammo.destroy(vectB);
+            Ammo.destroy(vectC);
+
+        })
+
+
+        
+        
+        
+
+        const btSize = new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5);
+        this.shape.setMargin(.05);
+
+        if(mass > 0) {
+            this.shape.calculateLocalInertia(mass, this.inertia);
+        }
+
+        this.info = new Ammo.btRigidBodyConstructionInfo(mass, this.motionState, this.shape, this.inertia);
+        this.body = new Ammo.btRigidBody(this.info);
+
+        Ammo.destroy(btSize);
+        // const glftLoader = new GLTFLoader();
+        // glftLoader.load(url, (gltfScene) => {
+        //     gltfScene.scene.traverse(function (child) {
+        //         if (child.isMesh) {
+        //             child.castShadow = true;
+        //             child.receiveShadow = true;
+        //         }
+        //     });
+        //     //this.metaScreenModel = gltfScene;
+        //     gltfScene.scene.position.y = 0;
+        //     gltfScene.scene.position.x = 0;
+        //     gltfScene.scene.scale.set(1, 1, 1);
+        //     this.scene.add(gltfScene.scene);
+
+        //     return gltfScene;
+        // });
     }
-
-    // async MainModelLoader(url) {
-    //     const gltfData = await this.ModelLoader(url),
-
-    //     model = gltf.scene;
-    //     this.scene.add(model);
-
-    // }
-
-    // OnLoaded(obj) {
-    //     this.target = obj;
-    //     this.scene.add(this.target); 
-    // }
 
     RenderAnimationFrame() {
         //Game states
