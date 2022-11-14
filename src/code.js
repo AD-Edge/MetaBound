@@ -1,7 +1,8 @@
 import * as THREE from '../lib/three.module.js';
-
+import * as CANNON from '../lib/cannon-es.js'
 import {GLTFLoader} from '../lib/GLTFLoader.js';
 import {OrbitControls} from '../lib/OrbitControls.js';
+import CannonDebugger from '../lib/cannon-es-debugger.js';
 
 //Setup Canvas and Elements
 var html = document.documentElement;
@@ -53,31 +54,20 @@ var state = STATE_ENUM.MENU;
 //Store mouse position
 const mouse = { x: 0, y: 0 };
 
-class RigidBody {
-    constructor() {
-    }
+//Cannon.js variables
+var scene, quaternionNode, translationNode,
+        world, body, shape, timeStep=1/60;
 
-    createBox(mass, pos, quat, size) {
-        this.transform = new Ammo.btTransform();
-        this.transform.setIdentity();
-        this.transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
-        this.transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
-        this.motionState = new Ammo.btDefaultMotionState(this.transform);
+//cannon.js physics config
+initCannon();
 
-        const btSize = new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5);
-        this.shape = new Ammo.btBoxShape(btSize);
-        this.shape.setMargin(.05);
+function initCannon() {
 
-        this.inertia = new Ammo.btVector3(0,0,0);
-        if(mass > 0) {
-            this.shape.calculateLocalInertia(mass, this.inertia);
-        }
+    world = new CANNON.World();
+    world.gravity.set(0,-9.81,0);
 
-        this.info = new Ammo.btRigidBodyConstructionInfo(mass, this.motionState, this.shape, this.inertia);
-        this.body = new Ammo.btRigidBody(this.info);
+    console.log("world grav: " + world.gravity);
 
-        Ammo.destroy(btSize);
-    }
 }
 
 class LoadPrimaryApplication {
@@ -98,16 +88,8 @@ class LoadPrimaryApplication {
         //console.log("Minimum Canvas: " + minCanvas);
         //console.log("Maximum Canvas: " + maxCanvas);
 
-        //ammo physics config 
-        this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
-        this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
-        this.broadphase = new Ammo.btDbvtBroadphase();
-        this.solver = new Ammo.btSequentialImpulseConstraintSolver();
-        this.physicsWorld = new Ammo.btDiscreteDynamicsWorld(
-        this.dispatcher, this.broadphase, this.solver, this.collisionConfiguration);
-        this.physicsWorld.setGravity(new Ammo.btVector3(0, -1, 0));
 
-        this.rigidBodies = [];
+        //this.rigidBodies = [];
 
         //setup init three.js
         this.renderer = new THREE.WebGLRenderer({antialias: true,});
@@ -173,17 +155,9 @@ class LoadPrimaryApplication {
         this.camera.position.z = 5;
 
         
-        const ground = new THREE.Mesh(
-            new THREE.BoxGeometry(100, 1, 100),
-            new THREE.MeshStandardMaterial({color: 0x404040}));
-        ground.castShadow = false;
-        ground.receiveShadow = true;
-        ground.position.set(0,-3.5,0);
-        this.scene.add(ground);
-
-        const rb_ground = new RigidBody();
-        rb_ground.createBox(0, ground.position, ground.quaternion, new THREE.Vector3(100, 1, 100));
-        this.physicsWorld.addRigidBody(rb_ground.body);
+        // const rb_ground = new RigidBody();
+        // rb_ground.createBox(0, ground.position, ground.quaternion, new THREE.Vector3(100, 1, 100));
+        // this.physicsWorld.addRigidBody(rb_ground.body);
 
         //Player default obj and rigid body
         const box = new THREE.Mesh(
@@ -194,34 +168,68 @@ class LoadPrimaryApplication {
         box.position.set(0, 0.5, -0.5);
         this.scene.add(box);
         
-        const rb_box = new RigidBody();
-        rb_box.createBox(1, box.position, box.quaternion, new THREE.Vector3(1, 1, 1), null);
-        rb_box.body.setRestitution(0.1);
-        rb_box.body.setFriction(0.0);
-        rb_box.body.setRollingFriction(1);
-        this.physicsWorld.addRigidBody(rb_box.body);
-        this.rigidBodies.push({mesh: box, rigidBody: rb_box});
+        // const rb_box = new RigidBody();
+        // rb_box.createBox(1, box.position, box.quaternion, new THREE.Vector3(1, 1, 1), null);
+        // rb_box.body.setRestitution(0.1);
+        // rb_box.body.setFriction(0.0);
+        // rb_box.body.setRollingFriction(1);
+        // this.physicsWorld.addRigidBody(rb_box.body);
+        // this.rigidBodies.push({mesh: box, rigidBody: rb_box});
 
         
-        
-        const box2 = new THREE.Mesh(
+        //Cannon sphere test
+        this.sphereMesh = undefined; 
+        const radius = 1 // m
+        const geometry = new THREE.SphereGeometry(radius)
+        const material = new THREE.MeshStandardMaterial({color: 0xC09090});
+        // const material = new THREE.MeshNormalMaterial()
+        this.sphereMesh = new THREE.Mesh(geometry, material)
+        this.scene.add(this.sphereMesh)
+
+        //sphere physics body
+        this.sphereBody = undefined; 
+        this.sphereBody = new CANNON.Body({
+          mass: 5, // kg
+          shape: new CANNON.Sphere(radius),
+        })
+        this.sphereBody.position.set(-2, 2, 0) // m
+        world.addBody(this.sphereBody)
+
+        this.box2 = undefined; 
+        this.box2 = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
             new THREE.MeshStandardMaterial({color: 0xC09090}));
-        box2.castShadow = true;
-        box2.receiveShadow = true;
-        box2.position.set(2.5, 1, -0.5);
-        this.scene.add(box2);
+        this.box2.castShadow = true;
+        this.box2.receiveShadow = true;
+        this.scene.add(this.box2);
         
-        const rb_box2 = new RigidBody();
-        rb_box2.createBox(2, box2.position, box2.quaternion, new THREE.Vector3(1, 1, 1), null);
-        rb_box2.body.setRestitution(0.125);
-        rb_box2.body.setFriction(1);
-        rb_box2.body.setRollingFriction(5);
-        this.physicsWorld.addRigidBody(rb_box2.body);
-        this.rigidBodies.push({mesh: box2, rigidBody: rb_box2});
+        //box physics body
+        this.boxBody = undefined; 
+        this.boxBody = new CANNON.Body({
+          mass: 5, // kg
+          shape: new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)),
+        })
+        this.boxBody.position.set(2.5, 1, -0.5) // m
+        world.addBody(this.boxBody);
+
+        // Static ground plane
+        const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(100, 1, 100),
+            new THREE.MeshStandardMaterial({color: 0x404040}));
+        ground.castShadow = false;
+        ground.receiveShadow = true;
+        ground.position.set(0,-3.5,0);
+        this.scene.add(ground);
+        
+        const groundShape = new CANNON.Plane()
+        const groundBody = new CANNON.Body({ mass: 0 })
+        groundBody.addShape(groundShape)
+        groundBody.position.set(0,-3,0);
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0)
+        world.addBody(groundBody)
+        // demo.addVisual(groundBody)
 
 
-        this.tmpTransform = new Ammo.btTransform();
         this._previousRAF = null;
         this._mixers = [];
 
@@ -286,16 +294,11 @@ class LoadPrimaryApplication {
         this.character_controls = new BasicCharacterController(params);
 
         // this.levelSeg_01_1 = this.LoadModel("./src/3dAssets/levelsegments/level_seg01_test01.glb");
-        this.CreateGLTFSegment();
 
         //console.log("kicking off application");
         this.RenderAnimationFrame();
     }
             
-    // LoadAnimatedModel() {
-    //     // console.log("loadanimated model");
-    // }
-
     LoadModel(url) {
         const glftLoader = new GLTFLoader();
         glftLoader.load(url, (gltfScene) => {
@@ -315,100 +318,12 @@ class LoadPrimaryApplication {
         });
     }
 
-    CreateGLTFSegment() {
-
-        let position = {x:0, y:0, z:0},
-        quaternion = {x:0, y:0, z:0, w:1},
-        mass = 0.5
-
-        this.loader = new GLTFLoader();
-        // const dracoLoader = new DRACOLoader();
-        // dracoLoader.setDecoderParth('/draco/');
-        // this.loader.setDRACOLoader(dracoLoader);
-        this.loader.load("./src/3dAssets/levelsegments/level_seg01_test01.glb", (gltf) => {
-            const mezh = gltf.scene.children[0];
-            this.scene.add(gltf.scene);
-
-            let transform = new Ammo.btTransform();
-            transform.setIdentity();
-            transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
-            transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
-
-            let motionState = new Ammo.btDefaultMotionState(this.transform);
-            let localinertia = new Ammo.btVector3(0,0,0);
-
-            let verticiesPos = mezh.geometry.getAttribute('position').array;
-            let triangles = [];
-            for(let i=0; i < verticiesPos.length; i += 3) {
-                triangles.push({
-                    x: verticesPos[i],
-                    y: verticesPos[i + 2],
-                    z: verticesPos[i + 3]
-                })
-            }
-
-            let triangle, triangle_mesh = new Ammo.btTriangleMesh();
-            let vecA = new Ammo.btVector3(0,0,0);
-            let vecB = new Ammo.btVector3(0,0,0);
-            let vecC = new Ammo.btVector3(0,0,0);
-
-            for(let i=0; i < triangles.length; i+=3) {
-                vecA.setX(triangles[i].x);
-                vecA.setY(triangles[i].y);
-                vecA.setZ(triangles[i].z);
-
-                vecB.setX(triangles[i + 1].x);
-                vecB.setY(triangles[i + 1].y);
-                vecB.setZ(triangles[i + 1].z);
-
-                vecC.setX(triangles[i + 2].x);
-                vecC.setY(triangles[i + 2].y);
-                vecC.setZ(triangles[i + 2].z);
-
-                triangle_mesh.addTriangle(vecA, vecB, vecC, true);
-            }
-
-            Ammo.destroy(vectA);
-            Ammo.destroy(vectB);
-            Ammo.destroy(vectC);
-
-        })
-
-
-        
-        
-        
-
-        const btSize = new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5);
-        this.shape.setMargin(.05);
-
-        if(mass > 0) {
-            this.shape.calculateLocalInertia(mass, this.inertia);
-        }
-
-        this.info = new Ammo.btRigidBodyConstructionInfo(mass, this.motionState, this.shape, this.inertia);
-        this.body = new Ammo.btRigidBody(this.info);
-
-        Ammo.destroy(btSize);
-        // const glftLoader = new GLTFLoader();
-        // glftLoader.load(url, (gltfScene) => {
-        //     gltfScene.scene.traverse(function (child) {
-        //         if (child.isMesh) {
-        //             child.castShadow = true;
-        //             child.receiveShadow = true;
-        //         }
-        //     });
-        //     //this.metaScreenModel = gltfScene;
-        //     gltfScene.scene.position.y = 0;
-        //     gltfScene.scene.position.x = 0;
-        //     gltfScene.scene.scale.set(1, 1, 1);
-        //     this.scene.add(gltfScene.scene);
-
-        //     return gltfScene;
-        // });
-    }
-
     RenderAnimationFrame() {
+        //update game state
+        if(init) {
+            init = false;
+            this.gameState(state);
+        }
         //Game states
         //if(state == STATE_ENUM.MENU) {
             //console.log("menu state");
@@ -424,50 +339,53 @@ class LoadPrimaryApplication {
             this.metaScreenModel.scene.rotation.y += 0.01;
         }
 
+        //character controller updates
         if(this.metaBoyModel) {
-            let physicsBody = this.rigidBodies[0].rigidBody.body;
-
             if(this.character_controls.input.keys.left) {
                 //console.log("left!");
                 // this.metaBoyModel.scene.position.x -= 0.05;                            
                 this.metaBoyModel.scene.rotation.y = -0.1;
-                let jumpImpulse = new Ammo.btVector3(-0.8, 0, 0);
-                physicsBody.setActivationState(1);                
-                physicsBody.setLinearVelocity( jumpImpulse );
-                // physicsBody.applyImpulse( jumpImpulse );
-                // physicsBody.applyForce( jumpImpulse );
+                // let jumpImpulse = new Ammo.btVector3(-0.8, 0, 0);
+                // physicsBody.setActivationState(1);                
+                // physicsBody.setLinearVelocity( jumpImpulse );
             } else if(this.character_controls.input.keys.right) {
                 this.metaBoyModel.scene.rotation.y = + 0.1;
-                let jumpImpulse = new Ammo.btVector3(0.8, 0, 0);
-                physicsBody.setActivationState(1);                
-                physicsBody.setLinearVelocity( jumpImpulse );
+                // let jumpImpulse = new Ammo.btVector3(0.8, 0, 0);
+                // physicsBody.setActivationState(1);                
+                // physicsBody.setLinearVelocity( jumpImpulse );
             } else if(this.character_controls.input.keys.space) {
-                let jumpImpulse = new Ammo.btVector3(0, 2, 0);
-                physicsBody.setActivationState(1);                
-                physicsBody.setLinearVelocity( jumpImpulse );
+                // let jumpImpulse = new Ammo.btVector3(0, 2, 0);
+                // physicsBody.setActivationState(1);                
+                // physicsBody.setLinearVelocity( jumpImpulse );
+
+                //test force
+                const force = new CANNON.Vec3( 0, 100, 0 );
+                this.boxBody.applyForce(force);
+
             } else {
                     this.metaBoyModel.scene.rotation.y = 0;
             }
         }
 
-        //console.log(this.rigidBodies[0].mesh.userData);
-        // var physicsBody = this.rb_box.physicsBody;
-
         //Refresh canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1;
-
-        //update game state
-        if(init) {
-            init = false;
-            this.gameState(state);
-        }
 
         //Draw title text
         this.drawTitleText();
         //Draw the button which toggles fullscreen mode
         this.drawFullScreenButton();
         this.debugMousePos();
+
+        //run Cannon physics sim independant from framerate 
+        world.fixedStep()
+
+        //update test sphere
+        this.sphereMesh.position.copy(this.sphereBody.position)
+        this.sphereMesh.quaternion.copy(this.sphereBody.quaternion)
+        //update test box
+        this.box2.position.copy(this.boxBody.position)
+        this.box2.quaternion.copy(this.boxBody.quaternion)
 
         requestAnimationFrame((t) => {
             if (this._previousRAF === null) {
@@ -490,26 +408,24 @@ class LoadPrimaryApplication {
         if (this._mixers) {
             this._mixers.map(m => m.update(timeElapsedS));
         }
-        //step physics
-        this.physicsWorld.stepSimulation(timeElapsed, 10)
-        //iterate over all objects and rigid bodies, link locations/etc 
-        for (let i = 0; i < this.rigidBodies.length; ++i) {
-            this.rigidBodies[i].rigidBody.motionState.getWorldTransform(this.tmpTransform);
-            const pos = this.tmpTransform.getOrigin();
-            const quat = this.tmpTransform.getRotation();
-            const pos3 = new THREE.Vector3(pos.x(), pos.y(), pos.z()); 
-            const quat3 = new THREE.Quaternion(quat.x(), quat.y(), quat.z(), quat.w());
+        // //iterate over all objects and rigid bodies, link locations/etc 
+        // for (let i = 0; i < this.rigidBodies.length; ++i) {
+        //     this.rigidBodies[i].rigidBody.motionState.getWorldTransform(this.tmpTransform);
+        //     const pos = this.tmpTransform.getOrigin();
+        //     const quat = this.tmpTransform.getRotation();
+        //     const pos3 = new THREE.Vector3(pos.x(), pos.y(), pos.z()); 
+        //     const quat3 = new THREE.Quaternion(quat.x(), quat.y(), quat.z(), quat.w());
             
-            this.rigidBodies[i].mesh.position.copy(pos3);
-            this.rigidBodies[i].mesh.quaternion.copy(quat3);
+        //     this.rigidBodies[i].mesh.position.copy(pos3);
+        //     this.rigidBodies[i].mesh.quaternion.copy(quat3);
 
-            if(i == 0 && this.metaBoyModel) { // if first object, parent metaboy to it
-                this.metaBoyModel.scene.position.x = pos3.x;
-                this.metaBoyModel.scene.position.y = pos3.y - 0.55;
-                this.metaBoyModel.scene.position.z = pos3.z;
-                //this.metaBoyModel.scene.rotation.copy(quat3);
-            }
-        }
+        //     if(i == 0 && this.metaBoyModel) { // if first object, parent metaboy to it
+        //         this.metaBoyModel.scene.position.x = pos3.x;
+        //         this.metaBoyModel.scene.position.y = pos3.y - 0.55;
+        //         this.metaBoyModel.scene.position.z = pos3.z;
+        //         //this.metaBoyModel.scene.rotation.copy(quat3);
+        //     }
+        // }
 
         //Update character physics
         if(this.character_controls) {
@@ -839,16 +755,10 @@ class BasicCharacterController {
 let APP = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
-    Ammo().then((lib) => {
-        try {
-            Ammo = lib;
-            APP = new LoadPrimaryApplication();
-            // LoadPrimaryApplication.initialize();
-        } catch (error) {
-            console.log("ASYNC ERROR THROWN: " + error);
-        }
-    });
+    try {
+        APP = new LoadPrimaryApplication();
+        // LoadPrimaryApplication.initialize();
+    } catch (error) {
+        console.log("ASYNC ERROR THROWN: " + error);
+    }
 });
-
-//Kick off app function when initial HTML document loaded
-//document.addEventListener("DOMContentLoaded", app);
