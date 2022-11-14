@@ -117,7 +117,7 @@ class LoadPrimaryApplication {
         this.ambientLight = undefined;
         this.directionaLight= undefined;
         // ambient light setup
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.33);
         this.scene.add(this.ambientLight);
         // directional light
         this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
@@ -225,10 +225,10 @@ class LoadPrimaryApplication {
         //sphere physics body
         this.sphereBody = undefined; 
         this.sphereBody = new CANNON.Body({
-          mass: 5, // kg
+          mass: 10, // kg
           shape: new CANNON.Sphere(radius),
         })
-        this.sphereBody.position.set(-3, 2, 0) // m
+        this.sphereBody.position.set(-4, 2, 0) // m
         world.addBody(this.sphereBody)
 
         this.box2 = undefined; 
@@ -242,7 +242,7 @@ class LoadPrimaryApplication {
         //box physics body
         this.boxBody = undefined; 
         this.boxBody = new CANNON.Body({
-          mass: 5, // kg
+          mass: 0.5, // kg
           shape: new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)),
         })
         this.boxBody.position.set(2.5, 3, -0.5) // m
@@ -459,7 +459,7 @@ class LoadPrimaryApplication {
         const objLoader = new OBJLoader();
         objLoader.load( url, (object) => {
                 //console.log(object.children[0]);
-                let obj = new THREE.Mesh(object.children[0].geometry, new THREE.MeshStandardMaterial({color: 0xC09090}));
+                let obj = new THREE.Mesh(object.children[0].geometry, new THREE.MeshStandardMaterial({color: 0x9090F0}));
                 // obj.material = material
                 obj.position.y = 0.5;
                 obj.position.z = -10;
@@ -493,7 +493,7 @@ class LoadPrimaryApplication {
         const convexHull = new THREE.Mesh(
             convexGeometry,
             new THREE.MeshBasicMaterial({
-                color: 0x00ff00,
+                color: 0x0000FF,
                 wireframe: true,
             })
         )
@@ -672,7 +672,7 @@ class LoadPrimaryApplication {
         this.drawTitleText();
         //Draw the button which toggles fullscreen mode
         //this.drawFullScreenButton();
-        this.debugMousePos();
+        //this.debugMousePos();
 
         //run Cannon physics sim independant from framerate 
         world.fixedStep()
@@ -970,7 +970,7 @@ class LoadPrimaryApplication {
         mouse.y = e.clientY - rect.top;
     }
 
-    drawTitleText() {
+    drawTitleText() { 
         //Draw Title text
         ctx.fillStyle = '#A0A0A0';
         ctx.textAlign = "center";
@@ -980,6 +980,7 @@ class LoadPrimaryApplication {
         ctx.fillText("           _", 0.5*width, 0.068*height);
         ctx.fillText("           _", 0.5*width, 0.065*height);
         ctx.font = height/42 + 'px retroPixel';
+        ctx.fillText("test build 0.0.2", 0.5*width, 0.12*height);
         ctx.fillText("# MAKEYOURMETA", 0.5*width, 0.92*height);
         ctx.fillText("By Alex Delderfield, 2022", 0.5*width, 0.95*height);
 
