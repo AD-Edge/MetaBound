@@ -288,7 +288,8 @@ class LoadPrimaryApplication {
         this.metaScreenModel = undefined;
         
         const glftLoader = new GLTFLoader();
-        glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
+        // glftLoader.load("./src/3dAssets/MetaBoy_3173_test1.glb", (gltfScene) => {
+        glftLoader.load("./src/3dAssets/MetaBoy_3173_tex.glb", (gltfScene) => {
             gltfScene.scene.traverse(function (child) {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -693,7 +694,7 @@ class LoadPrimaryApplication {
         if(this.metaBoyModel) {
             this.metaBoyModel.scene.position.x = pos3.x;
             this.metaBoyModel.scene.position.y = pos3.y - 0.55;
-            this.metaBoyModel.scene.position.z = pos3.z;
+            this.metaBoyModel.scene.position.z = pos3.z + 0.05;
             
         }
         
