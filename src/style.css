@@ -36,11 +36,11 @@ body {
     min-width: 64px;
     max-height: 720px;
     max-width: 720px;
-    /* disable canvas to see outline, good for debugging */
+    disable canvas to see outline, good for debugging 
     outline: 4px dashed #333333;
     outline-offset: -4px;
-} */
-  
+} 
+*/
 #canvasMain {
     visibility: visible;
     position: absolute;
@@ -60,7 +60,7 @@ body {
     padding: 0;
     box-sizing: border-box;
     z-index: 4; /*4*/
-    outline: 6px solid #552222;
+    outline: 0px solid #5b809e;
     outline-offset: -6px;
     /* background-color: #b85858; */
     margin: 0 auto;
@@ -87,8 +87,8 @@ image/link element which scales */
 #container {
     position: absolute;
     pointer-events: all;
-    bottom: 4%;
-    left: 3%;
+    bottom: -50px;
+    left: 10px;
     z-index: 12;
     width: 8%;
   /*we dont need this getting too big*/

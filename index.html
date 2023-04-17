@@ -7,9 +7,9 @@ twitter.com/Alex_ADEdge -->
 
 <!DOCTYPE html>
     <head> 
-        <link rel="stylesheet" href="src/style.css">
-        <script type="module" src="src/code.js"></script>
-        <title>MetaBound v0.0.3</title>
+        <link rel="stylesheet" href="./src/style.css">
+        <script type="module" src="./src/code.js"></script>
+        <title>MetaBound v0.0.7a</title>
     </head>
     <body>
         <!-- nftBOX is the primary div & the one which scales dynamically -->
@@ -24,12 +24,18 @@ twitter.com/Alex_ADEdge -->
                     <canvas width="100%" height="100%" id="canvasMain"></canvas>
                     <!-- Delta Logo - Shameless plug to my twitter !!  -->
                     <div id="container">
-                        <img class="logoimage" src="src/iconDelta.png" alt="deltaLink"> 
                         <a href="https://twitter.com/Alex_ADEdge" target="_blank" rel="noopener noreferrer">
-                            <div class="overlay">
-                                <div class="text">Link</div>
+                            <img class="logoimage" src="src/iconDelta.png" alt="deltaLink" style="width: 60px; height: 60px;"> 
+                            <div class="overlay" style="width: 60px; height: 60px;">
+                                <div class="text">(Link)</div>
                             </div>
                         </a>
+                        <div id="loading"> 
+                            <p style="color: #FFFFFF; float: center; font-size: 1.25em;">Loading.....</p>
+                            <div id = "reloader">
+                                <a href="javascript:void(0);" onclick="reloadNFT();">RELOAD NFT</a>
+                            </div>
+                        </div>
                     </div>
                     
                 </div>
